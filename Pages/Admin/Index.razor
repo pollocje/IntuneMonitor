@@ -1,0 +1,154 @@
+@page "/admin"
+@layout DashboardLayout
+@attribute [Authorize]
+@using System.Security.Claims
+@using IntuneMonitor.Data
+@using IntuneMonitor.Data.Entities
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext Db
+@inject IConfiguration Config
+@inject NavigationManager Nav
+
+@if (!_authorized)
+{
+    <p>Access denied.</p>
+    return;
+}
+
+<div class="admin-header">
+    <h2>Admin</h2>
+    <p class="subtitle">All tenants — @DateTime.UtcNow.ToString("MMMM d, yyyy")</p>
+</div>
+
+@if (_tenants is null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="stat-row">
+        <div class="stat-card">
+            <div class="stat-value">@_tenants.Count</div>
+            <div class="stat-label">Total Tenants</div>
+        </div>
+        <div class="stat-card highlight">
+            <div class="stat-value">@_activeCount</div>
+            <div class="stat-label">Active (Paying)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">@_trialCount</div>
+            <div class="stat-label">In Trial</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">$@(_activeCount * 10)<span class="mrr-mo">/mo</span></div>
+            <div class="stat-label">MRR</div>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Account</th>
+                    <th>Status</th>
+                    <th>Microsoft</th>
+                    <th>Notifications</th>
+                    <th>Trial / Since</th>
+                    <th>Joined</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in _tenants)
+                {
+                    <tr>
+                        <td class="col-account">
+                            <div class="acct-email">@(row.Users.FirstOrDefault()?.Email ?? "—")</div>
+                            @if (!string.IsNullOrEmpty(row.Name))
+                            {
+                                <div class="acct-name">@row.Name</div>
+                            }
+                        </td>
+                        <td>
+                            <span class="status-pill @row.SubscriptionStatus.ToString().ToLower()">
+                                @row.SubscriptionStatus
+                            </span>
+                        </td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(row.MicrosoftTenantId))
+                            {
+                                <span class="connected-yes" title="@row.MicrosoftTenantId">✓ Connected</span>
+                            }
+                            else
+                            {
+                                <span class="connected-no">Not connected</span>
+                            }
+                        </td>
+                        <td class="col-notif">
+                            @if (!string.IsNullOrEmpty(row.TeamsWebhookUrl))
+                            {
+                                <span class="notif-badge">Teams</span>
+                            }
+                            @if (!string.IsNullOrEmpty(row.NotificationEmail))
+                            {
+                                <span class="notif-badge">Email</span>
+                            }
+                            @if (string.IsNullOrEmpty(row.TeamsWebhookUrl) && string.IsNullOrEmpty(row.NotificationEmail))
+                            {
+                                <span class="notif-none">None</span>
+                            }
+                        </td>
+                        <td class="col-trial">
+                            @if (row.SubscriptionStatus == SubscriptionStatus.Trial && row.TrialEndsAt.HasValue)
+                            {
+                                var daysLeft = (int)(row.TrialEndsAt.Value - DateTime.UtcNow).TotalDays;
+                                <span class="@(daysLeft <= 3 ? "trial-expiring" : "")">
+                                    @Math.Max(0, daysLeft)d left
+                                </span>
+                            }
+                            else if (row.SubscriptionStatus == SubscriptionStatus.Active)
+                            {
+                                <span class="sub-since">Active</span>
+                            }
+                            else
+                            {
+                                <span class="sub-since">—</span>
+                            }
+                        </td>
+                        <td class="col-date">@row.CreatedAt.ToLocalTime().ToString("MMM d, yyyy")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private List<Tenant>? _tenants;
+    private bool _authorized;
+    private int _activeCount;
+    private int _trialCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is null) return;
+
+        var auth  = await AuthState;
+        var email = auth.User.FindFirstValue(ClaimTypes.Email) ?? "";
+
+        var adminEmails = Config.GetSection("Admin:Emails").Get<string[]>() ?? Array.Empty<string>();
+        _authorized = adminEmails.Contains(email, StringComparer.OrdinalIgnoreCase);
+
+        if (!_authorized) return;
+
+        _tenants = await Db.Tenants
+            .Include(t => t.Users)
+            .OrderByDescending(t => t.CreatedAt)
+            .ToListAsync();
+
+        _activeCount = _tenants.Count(t => t.SubscriptionStatus == SubscriptionStatus.Active);
+        _trialCount  = _tenants.Count(t => t.SubscriptionStatus == SubscriptionStatus.Trial);
+    }
+}
