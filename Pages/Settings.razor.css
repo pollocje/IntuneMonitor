@@ -1,0 +1,134 @@
+h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 28px;
+}
+
+.settings-section {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 28px;
+    margin-bottom: 20px;
+}
+
+.settings-section h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.section-desc {
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 16px;
+}
+
+.info-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.info-item {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    font-size: 0.9rem;
+}
+
+.info-label {
+    width: 120px;
+    color: #888;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+}
+
+.mono {
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: #555;
+}
+
+.status-badge {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.status-badge.active    { background: #d1fae5; color: #065f46; }
+.status-badge.trial     { background: #e0f2fe; color: #0369a1; }
+.status-badge.pastdue   { background: #fef3c7; color: #92400e; }
+.status-badge.cancelled { background: #fee2e2; color: #991b1b; }
+
+.field-group {
+    margin-bottom: 24px;
+}
+
+.field-group label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+}
+
+.field-hint {
+    font-size: 0.82rem;
+    color: #888;
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+
+.input-row {
+    display: flex;
+    gap: 10px;
+}
+
+.input-row input {
+    flex: 1;
+    padding: 9px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.input-row input:focus {
+    outline: none;
+    border-color: #0066cc;
+    box-shadow: 0 0 0 3px rgba(0,102,204,0.1);
+}
+
+.btn {
+    padding: 9px 18px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    display: inline-block;
+}
+
+.btn-primary   { background: #0066cc; color: #fff; }
+.btn-secondary { background: #f0f0f0; color: #333; }
+.btn-primary:hover   { background: #0052a3; }
+.btn-secondary:hover { background: #e0e0e0; }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.save-confirmation {
+    color: #065f46;
+    background: #d1fae5;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-top: 8px;
+    display: inline-block;
+}

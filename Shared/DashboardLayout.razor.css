@@ -1,0 +1,72 @@
+.dashboard-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background: #f8f9fa;
+}
+
+.dashboard-nav {
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0 32px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.logo {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #0066cc;
+    text-decoration: none;
+}
+
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.nav-link {
+    text-decoration: none;
+    color: #555;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.nav-link:hover { color: #0066cc; }
+
+.user-email {
+    font-size: 0.85rem;
+    color: #888;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nav-signout {
+    font-size: 0.85rem;
+    color: #888;
+    text-decoration: none;
+    padding: 6px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+}
+
+.nav-signout:hover {
+    color: #333;
+    border-color: #ccc;
+}
+
+.dashboard-main {
+    flex: 1;
+    padding: 32px;
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+}

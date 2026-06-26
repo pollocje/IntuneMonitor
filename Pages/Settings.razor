@@ -1,0 +1,175 @@
+@page "/settings"
+@layout DashboardLayout
+@attribute [Authorize]
+@using System.Security.Claims
+@using IntuneMonitor.Data
+@using IntuneMonitor.Data.Entities
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AppDbContext Db
+
+<h2>Settings</h2>
+
+@if (_tenant is null || _user is null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <!-- ACCOUNT -->
+    <div class="settings-section">
+        <h3>Account</h3>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Email</span>
+                <span>@_user.Email</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Member since</span>
+                <span>@_user.CreatedAt.ToLocalTime().ToString("MMMM d, yyyy")</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUBSCRIPTION -->
+    <div class="settings-section">
+        <h3>Subscription</h3>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Status</span>
+                <span class="status-badge @_tenant.SubscriptionStatus.ToString().ToLower()">
+                    @_tenant.SubscriptionStatus
+                </span>
+            </div>
+            @if (_tenant.SubscriptionStatus == SubscriptionStatus.Trial && _tenant.TrialEndsAt.HasValue)
+            {
+                <div class="info-item">
+                    <span class="info-label">Trial ends</span>
+                    <span>
+                        @_tenant.TrialEndsAt.Value.ToLocalTime().ToString("MMMM d, yyyy")
+                        (@Math.Max(0, (int)(_tenant.TrialEndsAt.Value - DateTime.UtcNow).TotalDays) days remaining)
+                    </span>
+                </div>
+            }
+        </div>
+        @if (_tenant.SubscriptionStatus != SubscriptionStatus.Active)
+        {
+            <a href="/billing/checkout" class="btn btn-primary">
+                @(_tenant.SubscriptionStatus == SubscriptionStatus.Trial ? "Subscribe — $49/month" : "Reactivate Subscription")
+            </a>
+        }
+    </div>
+
+    <!-- NOTIFICATIONS -->
+    <div class="settings-section">
+        <h3>Notifications</h3>
+        <p class="section-desc">Configure where IntuneMonitor sends alerts when a device is ready.</p>
+
+        <div class="field-group">
+            <label>Teams Webhook URL</label>
+            <p class="field-hint">
+                In Teams: go to any channel → ··· → Connectors → Incoming Webhook → Create.
+                Paste the URL here.
+            </p>
+            <div class="input-row">
+                <input type="url" @bind="_teamsWebhookUrl" placeholder="https://outlook.office.com/webhook/..." />
+                <button class="btn btn-secondary" @onclick="SaveTeamsWebhook" disabled="@_saving">
+                    @(_saving ? "Saving..." : "Save")
+                </button>
+            </div>
+        </div>
+
+        <div class="field-group">
+            <label>Notification Email</label>
+            <p class="field-hint">Get an email when a device finishes enrolling.</p>
+            <div class="input-row">
+                <input type="email" @bind="_notificationEmail" placeholder="you@company.com" />
+                <button class="btn btn-secondary" @onclick="SaveNotificationEmail" disabled="@_saving">
+                    @(_saving ? "Saving..." : "Save")
+                </button>
+            </div>
+        </div>
+
+        @if (_savedMessage is not null)
+        {
+            <div class="save-confirmation">✓ @_savedMessage</div>
+        }
+    </div>
+
+    <!-- MICROSOFT TENANT -->
+    <div class="settings-section">
+        <h3>Microsoft Tenant</h3>
+        @if (string.IsNullOrEmpty(_tenant.MicrosoftTenantId))
+        {
+            <p class="section-desc">Connect your Microsoft tenant to start monitoring real Intune enrollments.</p>
+            <a href="/connect-tenant" class="btn btn-primary">Connect Microsoft Tenant</a>
+        }
+        else
+        {
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Tenant ID</span>
+                    <span class="mono">@_tenant.MicrosoftTenantId</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Status</span>
+                    <span class="status-badge active">Connected</span>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private Tenant? _tenant;
+    private AppUser? _user;
+    private string _teamsWebhookUrl = string.Empty;
+    private string _notificationEmail = string.Empty;
+    private bool _saving = false;
+    private string? _savedMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is null) return;
+
+        var auth = await AuthState;
+        var userId   = Guid.Parse(auth.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var tenantId = Guid.Parse(auth.User.FindFirstValue("TenantId")!);
+
+        _user   = await Db.Users.FindAsync(userId);
+        _tenant = await Db.Tenants.FindAsync(tenantId);
+
+        if (_tenant is not null)
+        {
+            _teamsWebhookUrl   = _tenant.TeamsWebhookUrl ?? string.Empty;
+            _notificationEmail = _tenant.NotificationEmail ?? string.Empty;
+        }
+    }
+
+    private async Task SaveTeamsWebhook()
+    {
+        if (_tenant is null) return;
+        _saving = true;
+        _tenant.TeamsWebhookUrl = string.IsNullOrWhiteSpace(_teamsWebhookUrl) ? null : _teamsWebhookUrl;
+        await Db.SaveChangesAsync();
+        _savedMessage = "Teams webhook saved.";
+        _saving = false;
+        StateHasChanged();
+        await Task.Delay(3000);
+        _savedMessage = null;
+    }
+
+    private async Task SaveNotificationEmail()
+    {
+        if (_tenant is null) return;
+        _saving = true;
+        _tenant.NotificationEmail = string.IsNullOrWhiteSpace(_notificationEmail) ? null : _notificationEmail;
+        await Db.SaveChangesAsync();
+        _savedMessage = "Notification email saved.";
+        _saving = false;
+        StateHasChanged();
+        await Task.Delay(3000);
+        _savedMessage = null;
+    }
+}

@@ -1,0 +1,23 @@
+@inherits LayoutComponentBase
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+
+<div class="dashboard-shell">
+    <nav class="dashboard-nav">
+        <div class="nav-left">
+            <a href="/" class="logo">IntuneMonitor</a>
+        </div>
+        <div class="nav-right">
+            <a href="/dashboard" class="nav-link">Dashboard</a>
+            <a href="/settings" class="nav-link">Settings</a>
+            <AuthorizeView>
+                <span class="user-email">@context.User.FindFirst(ClaimTypes.Email)?.Value</span>
+            </AuthorizeView>
+            <a href="/account/logout" class="nav-signout">Sign Out</a>
+        </div>
+    </nav>
+
+    <main class="dashboard-main">
+        @Body
+    </main>
+</div>
