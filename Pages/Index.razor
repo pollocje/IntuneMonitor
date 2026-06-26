@@ -1,0 +1,166 @@
+@page "/"
+@layout EmptyLayout
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IntuneMonitor — Know the second your devices are ready</title>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+    <div class="nav-inner">
+        <span class="logo">IntuneMonitor</span>
+        <div class="nav-links">
+            <a href="/login">Sign In</a>
+            <a href="/signup" class="btn btn-primary">Start Free Trial</a>
+        </div>
+    </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+    <div class="container">
+        <div class="hero-badge">Built for IT admins</div>
+        <h1>Stop babysitting Intune.<br />Know the second a device is ready.</h1>
+        <p class="hero-sub">
+            When you reimage a laptop, there's no way to know when all the required apps have finished installing.
+            IntuneMonitor watches your Intune enrollments in real time and notifies you the moment a device is fully set up.
+        </p>
+        <div class="hero-actions">
+            <a href="/signup" class="btn btn-primary btn-lg">Start Free Trial</a>
+            <span class="hero-note">14 days free · No credit card required</span>
+        </div>
+    </div>
+</section>
+
+<!-- PROBLEM -->
+<section class="section-alt">
+    <div class="container">
+        <h2 class="section-title">Sound familiar?</h2>
+        <div class="pain-grid">
+            <div class="pain-card">
+                <div class="pain-icon">😤</div>
+                <p>"I just have to wait and keep checking Intune manually."</p>
+            </div>
+            <div class="pain-card">
+                <div class="pain-icon">📞</div>
+                <p>"The user keeps calling asking if their laptop is ready yet."</p>
+            </div>
+            <div class="pain-card">
+                <div class="pain-icon">🤷</div>
+                <p>"I don't know if it's stuck or just slow — I can't tell."</p>
+            </div>
+            <div class="pain-card">
+                <div class="pain-icon">⏱️</div>
+                <p>"I wasted 45 minutes watching a progress bar that barely moved."</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section">
+    <div class="container">
+        <h2 class="section-title">Everything you need. Nothing you don't.</h2>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Live Enrollment Dashboard</h3>
+                <p>See every device currently enrolling with a real-time progress bar for each required app. Updates automatically — no refreshing.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔔</div>
+                <h3>Instant Notifications</h3>
+                <p>Get a Teams message or email the moment a device is fully set up. Know immediately without checking the portal.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🚨</div>
+                <h3>Failure Alerts</h3>
+                <p>See exactly which apps are stuck or failed so you can act immediately instead of finding out an hour later from an angry user.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📈</div>
+                <h3>Enrollment History</h3>
+                <p>Track how long enrollments take across your fleet over time. Spot patterns and justify infrastructure improvements.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔒</div>
+                <h3>Read-Only Access</h3>
+                <p>Connects to your Microsoft tenant with read-only Graph API permissions. We never modify anything in your environment.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>2-Minute Setup</h3>
+                <p>Sign up, click "Connect your Microsoft tenant", grant read permissions. That's it. No agents, no scripts, no infrastructure.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section-alt">
+    <div class="container">
+        <h2 class="section-title">How it works</h2>
+        <div class="steps">
+            <div class="step">
+                <div class="step-number">1</div>
+                <h3>Connect your tenant</h3>
+                <p>Sign in with your Microsoft admin account and grant read-only access to your Intune data. Takes 2 minutes.</p>
+            </div>
+            <div class="step-arrow">→</div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <h3>Watch enrollments live</h3>
+                <p>Your dashboard populates instantly. Every device enrolling right now shows up with real-time app install progress.</p>
+            </div>
+            <div class="step-arrow">→</div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <h3>Get notified when ready</h3>
+                <p>The moment a device finishes installing all required apps, you get a Teams message or email. Go hand the laptop over.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- PRICING -->
+<section class="section" id="pricing">
+    <div class="container">
+        <h2 class="section-title">Simple pricing</h2>
+        <p class="section-sub">One plan. Everything included. Cancel any time.</p>
+        <div class="pricing-card">
+            <div class="pricing-name">Pro</div>
+            <div class="pricing-price">$49<span>/month</span></div>
+            <ul class="pricing-features">
+                <li>✓ Unlimited device enrollments</li>
+                <li>✓ Real-time dashboard</li>
+                <li>✓ Teams + email notifications</li>
+                <li>✓ Enrollment history &amp; analytics</li>
+                <li>✓ Failure alerts</li>
+                <li>✓ Up to 5 admin users</li>
+                <li>✓ 14-day free trial</li>
+            </ul>
+            <a href="/signup" class="btn btn-primary btn-lg btn-full">Start Free Trial</a>
+            <p class="pricing-note">No credit card required for trial.</p>
+        </div>
+    </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+    <div class="container footer-inner">
+        <span class="logo">IntuneMonitor</span>
+        <div class="footer-links">
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms of Service</a>
+            <a href="mailto:support@@intuneMonitor.com">Support</a>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>
