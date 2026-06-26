@@ -1,0 +1,174 @@
+@page "/history"
+@layout DashboardLayout
+@attribute [Authorize]
+@using System.Security.Claims
+@using IntuneMonitor.Data
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext Db
+
+<div class="history-header">
+    <h2>Enrollment History</h2>
+    <p class="subtitle">Completed device enrollments — last 90 days</p>
+</div>
+
+@if (_rows is null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="stat-row">
+        <div class="stat-card">
+            <div class="stat-value">@_rows.Count</div>
+            <div class="stat-label">Enrollments (90 days)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">@(_avgTime.HasValue ? FormatDuration(_avgTime.Value) : "—")</div>
+            <div class="stat-label">Avg Time to Ready</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">@(_fastestTime.HasValue ? FormatDuration(_fastestTime.Value) : "—")</div>
+            <div class="stat-label">Fastest Enrollment</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">@(_slowestTime.HasValue ? FormatDuration(_slowestTime.Value) : "—")</div>
+            <div class="stat-label">Slowest Enrollment</div>
+        </div>
+    </div>
+
+    @if (_isDemo)
+    {
+        <div class="demo-notice">
+            Sample data — connect your Microsoft tenant and completed enrollments will appear here automatically.
+        </div>
+    }
+
+    @if (_rows.Count == 0)
+    {
+        <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <h3>No history yet</h3>
+            <p>Records appear here automatically when devices finish enrolling.</p>
+            <a href="/dashboard" class="btn btn-secondary">Go to Dashboard</a>
+        </div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Device</th>
+                        <th>User</th>
+                        <th>Enrolled</th>
+                        <th>Time to Ready</th>
+                        <th>Apps</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _rows)
+                    {
+                        <tr>
+                            <td class="col-device">@row.DeviceName</td>
+                            <td class="col-user">@row.User</td>
+                            <td class="col-date">@FormatDate(row.EnrolledAt)</td>
+                            <td class="col-duration">
+                                <span class="duration-pill @SpeedClass(row.TimeToReady)">
+                                    @FormatDuration(row.TimeToReady)
+                                </span>
+                            </td>
+                            <td class="col-apps">
+                                @row.InstalledApps<span class="apps-total">/@row.TotalApps</span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private record HistoryRow(string DeviceName, string User, DateTime EnrolledAt, TimeSpan TimeToReady, int InstalledApps, int TotalApps);
+
+    private List<HistoryRow>? _rows;
+    private TimeSpan? _avgTime;
+    private TimeSpan? _fastestTime;
+    private TimeSpan? _slowestTime;
+    private bool _isDemo;
+
+    private static readonly List<HistoryRow> DemoRows = new()
+    {
+        new("LAPTOP-JOHN01",    "john.smith@contoso.com",    DateTime.UtcNow.AddDays(-1).AddHours(-3),  TimeSpan.FromMinutes(23), 8, 8),
+        new("LAPTOP-SARAH02",   "sarah.jones@contoso.com",   DateTime.UtcNow.AddDays(-2).AddHours(-1),  TimeSpan.FromMinutes(31), 8, 8),
+        new("LAPTOP-MIKE03",    "mike.chen@contoso.com",     DateTime.UtcNow.AddDays(-3).AddHours(-5),  TimeSpan.FromMinutes(18), 5, 5),
+        new("LAPTOP-FINANCE01", "emily.watson@contoso.com",  DateTime.UtcNow.AddDays(-5).AddHours(-2),  TimeSpan.FromMinutes(47), 12, 12),
+        new("LAPTOP-DEV04",     "tom.garcia@contoso.com",    DateTime.UtcNow.AddDays(-7).AddHours(-4),  TimeSpan.FromMinutes(27), 9, 9),
+        new("LAPTOP-HR02",      "lisa.park@contoso.com",     DateTime.UtcNow.AddDays(-9).AddHours(-6),  TimeSpan.FromMinutes(34), 7, 7),
+        new("LAPTOP-OPS01",     "david.kim@contoso.com",     DateTime.UtcNow.AddDays(-12).AddHours(-2), TimeSpan.FromMinutes(21), 6, 6),
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is null) return;
+
+        var auth     = await AuthState;
+        var tenantId = Guid.Parse(auth.User.FindFirstValue("TenantId")!);
+        var cutoff   = DateTime.UtcNow.AddDays(-90);
+
+        try
+        {
+            var records = await Db.EnrollmentRecords
+                .Where(r => r.TenantId == tenantId && r.ReadyAt.HasValue && r.EnrolledAt >= cutoff)
+                .OrderByDescending(r => r.EnrolledAt)
+                .ToListAsync();
+
+            if (records.Count > 0)
+            {
+                _rows = records
+                    .Where(r => r.TimeToReady.HasValue)
+                    .Select(r => new HistoryRow(r.DeviceName, r.UserPrincipalName, r.EnrolledAt, r.TimeToReady!.Value, r.InstalledApps, r.TotalApps))
+                    .ToList();
+                _isDemo = false;
+            }
+            else
+            {
+                _rows = DemoRows;
+                _isDemo = true;
+            }
+        }
+        catch
+        {
+            _rows = DemoRows;
+            _isDemo = true;
+        }
+
+        if (_rows.Count > 0)
+        {
+            _avgTime     = TimeSpan.FromTicks((long)_rows.Average(r => r.TimeToReady.Ticks));
+            _fastestTime = _rows.Min(r => r.TimeToReady);
+            _slowestTime = _rows.Max(r => r.TimeToReady);
+        }
+    }
+
+    private static string FormatDuration(TimeSpan t) =>
+        t.TotalHours >= 1
+            ? $"{(int)t.TotalHours} hr {t.Minutes} min"
+            : $"{(int)t.TotalMinutes} min";
+
+    private static string FormatDate(DateTime dt)
+    {
+        var local = dt.ToLocalTime();
+        var diff  = DateTime.Now - local;
+        return diff.TotalDays < 1 ? $"Today {local:h:mm tt}"
+             : diff.TotalDays < 2 ? $"Yesterday {local:h:mm tt}"
+             : local.ToString("MMM d, yyyy");
+    }
+
+    private static string SpeedClass(TimeSpan t) =>
+        t.TotalMinutes < 25 ? "fast" :
+        t.TotalMinutes < 45 ? "normal" : "slow";
+}
