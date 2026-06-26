@@ -1,0 +1,30 @@
+@page
+@model IntuneMonitor.Pages.Billing.SuccessModel
+@{ Layout = null; }
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>You're all set — IntuneMonitor</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f7ff; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .card { background: #fff; border-radius: 12px; padding: 48px 40px; max-width: 440px; text-align: center; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+        .icon { font-size: 3rem; margin-bottom: 16px; }
+        h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: 10px; }
+        p { color: #555; margin-bottom: 28px; line-height: 1.6; }
+        .btn { display: inline-block; padding: 12px 28px; background: #0066cc; color: #fff; border-radius: 6px; text-decoration: none; font-weight: 600; }
+        .btn:hover { background: #0052a3; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="icon">🎉</div>
+        <h1>You're all set!</h1>
+        <p>Your subscription is active. Head to the dashboard to connect your Microsoft tenant and start monitoring enrollments.</p>
+        <a href="/dashboard" class="btn">Go to Dashboard</a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,73 @@
+@using IntuneMonitor.Data
+@using IntuneMonitor.Data.Entities
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AppDbContext Db
+
+@if (_loading)
+{
+    <p>Loading...</p>
+}
+else if (_isActive)
+{
+    @ChildContent
+}
+else
+{
+    <div class="gate-wrapper">
+        <div class="gate-card">
+            <div class="gate-icon">⏰</div>
+            <h2>@(_status == SubscriptionStatus.Trial ? "Trial Expired" : "Subscription Inactive")</h2>
+            <p>
+                @if (_status == SubscriptionStatus.Trial)
+                {
+                    <span>Your 14-day free trial has ended. Add a payment method to keep access.</span>
+                }
+                else if (_status == SubscriptionStatus.PastDue)
+                {
+                    <span>Your last payment failed. Please update your payment method to restore access.</span>
+                }
+                else
+                {
+                    <span>Your subscription is no longer active.</span>
+                }
+            </p>
+            <a href="/billing/checkout" class="btn-subscribe">
+                @(_status == SubscriptionStatus.PastDue ? "Update Payment Method" : "Subscribe — $49/month")
+            </a>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private bool _loading = true;
+    private bool _isActive = false;
+    private SubscriptionStatus _status = SubscriptionStatus.Trial;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is null) return;
+
+        var auth = await AuthState;
+        var tenantIdClaim = auth.User.FindFirst("TenantId")?.Value;
+
+        if (tenantIdClaim is null || !Guid.TryParse(tenantIdClaim, out var tenantId))
+        {
+            _loading = false;
+            return;
+        }
+
+        var tenant = await Db.Tenants.FindAsync(tenantId);
+        if (tenant is not null)
+        {
+            _status = tenant.SubscriptionStatus;
+            _isActive = tenant.SubscriptionStatus == SubscriptionStatus.Active ||
+                        (tenant.SubscriptionStatus == SubscriptionStatus.Trial &&
+                         tenant.TrialEndsAt > DateTime.UtcNow);
+        }
+
+        _loading = false;
+    }
+}

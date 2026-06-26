@@ -5,6 +5,8 @@
 @attribute [Authorize]
 @inject NavigationManager Nav
 
+<SubscriptionGate>
+
 <h2>Intune Enrollment Monitor</h2>
 
 @if (devices is null)
@@ -56,6 +58,8 @@ else
         </tbody>
     </table>
 }
+
+</SubscriptionGate>
 
 @code {
     private List<DeviceEnrollment>? devices;

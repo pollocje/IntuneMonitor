@@ -27,6 +27,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<StripeService>();
 builder.Services.AddSingleton<IGraphService, MockGraphService>();
 builder.Services.AddHttpClient<INotificationService, TeamsNotificationService>();
 builder.Services.AddHostedService<EnrollmentMonitorWorker>();
@@ -40,6 +41,24 @@ app.UseAuthorization();
 app.MapRazorPages();
 app.MapBlazorHub();
 app.MapHub<EnrollmentHub>("/enrollmenthub");
+
+// Stripe webhook — must read raw body before any middleware touches it
+app.MapPost("/billing/webhook", async (HttpRequest req, StripeService stripe) =>
+{
+    var json = await new StreamReader(req.Body).ReadToEndAsync();
+    var signature = req.Headers["Stripe-Signature"].ToString();
+
+    try
+    {
+        await stripe.HandleWebhookAsync(json, signature);
+        return Results.Ok();
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(ex.Message);
+    }
+}).AllowAnonymous();
+
 app.MapFallbackToPage("/_Host");
 
 app.Run();

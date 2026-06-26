@@ -1,0 +1,46 @@
+.gate-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+}
+
+.gate-card {
+    text-align: center;
+    max-width: 420px;
+    padding: 48px 40px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+.gate-icon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+}
+
+.gate-card h2 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.gate-card p {
+    color: #555;
+    margin-bottom: 28px;
+    line-height: 1.6;
+}
+
+.btn-subscribe {
+    display: inline-block;
+    padding: 12px 28px;
+    background: #0066cc;
+    color: #fff;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.btn-subscribe:hover {
+    background: #0052a3;
+}
