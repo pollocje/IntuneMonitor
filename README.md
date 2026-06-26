@@ -19,8 +19,11 @@ IntuneMonitor fixes that. It watches your Intune enrollments in real time, notif
 - **Device detail view** — drill into any device for full app status, enrollment timeline, and actions
 - **Settings page** — configure Teams webhook and notification email from inside the app
 - **Dashboard nav** — sticky nav with user email, settings link, sign out
+- **Microsoft tenant connect** — one-click admin consent flow; we request only what's needed and explain every permission before you click
+- **Auto-setup IME remediation** — the Restart IME script is created automatically in your tenant during onboarding (requires Intune Plan 2 / M365 E3+)
 - **User accounts** — sign up, log in, 14-day free trial, cookie-based auth
 - **Stripe subscriptions** — $49/month, full checkout and billing lifecycle handled automatically
+- **Privacy policy + Terms of Service** — real legal pages at `/privacy` and `/terms`
 
 ---
 
@@ -78,27 +81,30 @@ Update the connection string in `appsettings.json` first:
 
 ### Connect to a real Intune tenant
 
-1. Register an app in [Azure Portal](https://portal.azure.com) → App registrations
-2. Add API permissions (application):
+1. Register a **multi-tenant** app in [Azure Portal](https://portal.azure.com) → App registrations
+   - Set "Supported account types" to "Accounts in any organizational directory"
+   - Add a redirect URI: `https://yourdomain.com/connect-callback`
+2. Add API permissions (application, requires admin consent):
    - `DeviceManagementManagedDevices.Read.All`
    - `DeviceManagementApps.Read.All`
-   - `DeviceManagementManagedDevices.ReadWrite.All` ← required for Force Sync
-   - `DeviceManagementManagedDevices.PrivilegedOperations.All` ← required for Restart IME
+   - `DeviceManagementManagedDevices.ReadWrite.All` ← Force Sync
+   - `DeviceManagementManagedDevices.PrivilegedOperations.All` ← Restart IME
+   - `DeviceManagementConfiguration.ReadWrite.All` ← Create IME remediation script during onboarding
 3. Fill in `appsettings.json`:
 
 ```json
 {
   "AzureAd": {
-    "TenantId": "your-tenant-id",
     "ClientId": "your-client-id",
     "ClientSecret": "your-client-secret"
-  }
+  },
+  "AppUrl": "https://yourdomain.com"
 }
 ```
 
-4. In `Program.cs`, swap `MockGraphService` for `GraphService`
+4. Customers connect their tenant by clicking **Connect Microsoft Tenant** in Settings → they're taken to Microsoft's admin consent page → after approval, we save their tenant ID and auto-create the IME remediation script
 
-> **Note:** Restart IME Service requires Intune Plan 2 / M365 E3+ on the customer's tenant. The remediation script is created automatically during the tenant onboarding flow (not yet built).
+> **Note:** Restart IME Service requires Intune Plan 2 / M365 E3+ on the customer's tenant. If the tenant lacks the license, the script creation is skipped and the button shows "Not Configured" in the UI.
 
 ### Enable Teams notifications
 
@@ -141,6 +147,10 @@ IntuneMonitor/
 ├── Models/                    # DeviceEnrollment, AppInstallStatus (IsFailed computed)
 ├── Pages/
 │   ├── Index.razor            # Landing / marketing page (/)
+│   ├── Privacy.razor          # Privacy policy (/privacy)
+│   ├── Terms.razor            # Terms of service (/terms)
+│   ├── ConnectTenant.razor    # Microsoft OAuth connect UI (/connect-tenant)
+│   ├── ConnectCallback.cshtml # OAuth callback handler (/connect-callback)
 │   ├── Dashboard.razor        # Live enrollment dashboard (/dashboard)
 │   ├── DeviceDetail.razor     # Per-device detail + Force Sync / Restart IME (/device/{id})
 │   ├── Settings.razor         # Notification config, subscription status (/settings)
@@ -158,7 +168,8 @@ IntuneMonitor/
 │   ├── INotificationService.cs
 │   ├── TeamsNotificationService.cs
 │   ├── AuthService.cs         # Sign up, login, BCrypt password hashing
-│   └── StripeService.cs       # Checkout sessions, webhook handling
+│   ├── StripeService.cs       # Checkout sessions, webhook handling
+│   └── TenantOnboardingService.cs  # Creates IME remediation script in customer's tenant after OAuth consent
 ├── Shared/
 │   ├── DashboardLayout.razor  # Sticky nav (logo, links, user email, sign out)
 │   ├── SummaryCards.razor     # Stat cards (Total/Waiting/Installing/Ready)
@@ -187,8 +198,9 @@ IntuneMonitor/
 - [x] Dashboard nav bar and settings page
 - [x] Force Sync — remotely trigger Intune sync via Graph API
 - [x] Restart IME Service — via Intune Proactive Remediation, no RMM needed
-- [ ] Microsoft OAuth tenant connect flow
-- [ ] Auto-create IME remediation script during tenant onboarding
+- [x] Microsoft OAuth tenant connect flow — admin consent, permission disclosure page
+- [x] Auto-create IME remediation script during tenant onboarding
+- [x] Privacy policy + Terms of Service pages
 - [ ] Multi-tenant worker (poll all connected tenants)
 - [ ] Email notifications
 - [ ] Azure deployment

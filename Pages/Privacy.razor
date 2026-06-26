@@ -1,0 +1,73 @@
+@page "/privacy"
+@layout EmptyLayout
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Privacy Policy — IntuneMonitor</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1a1a2e; line-height: 1.7; }
+        .nav { background: #fff; border-bottom: 1px solid #eee; padding: 16px 24px; }
+        .logo { font-weight: 700; font-size: 1.2rem; color: #0066cc; text-decoration: none; }
+        .content { max-width: 760px; margin: 60px auto; padding: 0 24px 80px; }
+        h1 { font-size: 2rem; font-weight: 700; margin-bottom: 8px; }
+        .updated { color: #888; font-size: 0.9rem; margin-bottom: 40px; }
+        h2 { font-size: 1.1rem; font-weight: 700; margin: 32px 0 12px; }
+        p { color: #444; margin-bottom: 14px; }
+        ul { color: #444; padding-left: 20px; margin-bottom: 14px; }
+        ul li { margin-bottom: 6px; }
+        a { color: #0066cc; }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <a class="logo" href="/">IntuneMonitor</a>
+    </nav>
+    <div class="content">
+        <h1>Privacy Policy</h1>
+        <p class="updated">Last updated: June 2026</p>
+
+        <p>IntuneMonitor ("we", "our", "us") is committed to protecting your privacy. This policy explains what data we collect, how we use it, and your rights.</p>
+
+        <h2>1. Data We Collect</h2>
+        <p>When you use IntuneMonitor, we collect:</p>
+        <ul>
+            <li><strong>Account data</strong> — your email address and a hashed password (we never store your plain-text password)</li>
+            <li><strong>Microsoft tenant data</strong> — your Azure AD tenant ID, used to connect to your Microsoft environment</li>
+            <li><strong>Intune device data</strong> — device names, user principal names, and app installation status, read via the Microsoft Graph API with your explicit admin consent</li>
+            <li><strong>Billing data</strong> — subscription status and Stripe customer ID. Payment card details are handled entirely by Stripe and never touch our servers</li>
+            <li><strong>Notification settings</strong> — Teams webhook URLs and email addresses you configure for alerts</li>
+        </ul>
+
+        <h2>2. How We Use Your Data</h2>
+        <ul>
+            <li>To provide the IntuneMonitor service — monitoring your Intune enrollments and sending notifications</li>
+            <li>To manage your account and subscription</li>
+            <li>To send transactional emails (billing receipts, account notifications)</li>
+        </ul>
+        <p>We do not sell your data. We do not use your Intune device data for any purpose other than displaying it back to you.</p>
+
+        <h2>3. Microsoft Graph API Access</h2>
+        <p>IntuneMonitor connects to your Microsoft tenant using read-only permissions granted through Microsoft's admin consent flow. We request only the permissions necessary to monitor device enrollments and app installation status. You can revoke this access at any time from your Azure portal under Enterprise Applications.</p>
+        <p>Device actions (Force Sync, Restart IME Service) require additional write permissions which are clearly disclosed before you grant them.</p>
+
+        <h2>4. Data Storage</h2>
+        <p>Your data is stored on servers hosted in Canada. We retain account data for as long as your account is active. Device enrollment data is retained for 90 days for analytics purposes, then deleted automatically.</p>
+
+        <h2>5. Third-Party Services</h2>
+        <ul>
+            <li><strong>Stripe</strong> — payment processing. Subject to <a href="https://stripe.com/privacy" target="_blank">Stripe's Privacy Policy</a></li>
+            <li><strong>Microsoft Graph API</strong> — device and app data from your Intune tenant</li>
+        </ul>
+
+        <h2>6. Your Rights</h2>
+        <p>You may request deletion of your account and all associated data at any time by emailing us. We will process deletion requests within 30 days.</p>
+
+        <h2>7. Contact</h2>
+        <p>Questions about this policy? Email us at <a href="mailto:privacy@intuneMonitor.com">privacy@intuneMonitor.com</a></p>
+    </div>
+</body>
+</html>

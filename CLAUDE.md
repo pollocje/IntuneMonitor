@@ -33,6 +33,7 @@ Full working skeleton running against animated mock data. All major SaaS infrast
 - `AuthService` — BCrypt hashing, creates Tenant + AppUser on signup, 14-day trial
 - `StripeService` — Stripe Checkout sessions, handles all webhook events, updates `Tenant.SubscriptionStatus`
 - `TeamsNotificationService` — Adaptive Card to Teams webhook, skips gracefully if not configured
+- `TenantOnboardingService` — called after admin consent. Creates `DeviceHealthScript` (Proactive Remediation) in the customer's tenant using our client credentials scoped to their TenantId. Sets `Tenant.RemediationScriptId`. Requires Intune Plan 2 / M365 E3+; failure is non-fatal.
 
 **Workers**
 - `EnrollmentMonitorWorker` — polls every 10s, pushes to SignalR hub, fires notifications. Tracks notified devices in `HashSet` (resets on restart).
@@ -44,6 +45,10 @@ Full working skeleton running against animated mock data. All major SaaS infrast
 
 **Pages**
 - `Index.razor` — full marketing landing page at `/`, uses `EmptyLayout`
+- `Privacy.razor` — `/privacy`, `@layout EmptyLayout`. Full privacy policy (data collected, Graph access, retention, Stripe, Canadian data storage, deletion rights).
+- `Terms.razor` — `/terms`, `@layout EmptyLayout`. Terms of service (trial, subscription, tenant auth, acceptable use, limitation of liability, Ontario governing law).
+- `ConnectTenant.razor` — `/connect-tenant`, `[Authorize]`, `@layout DashboardLayout`. Shows list of permissions being requested, builds the Microsoft admin consent URL (`/common/adminconsent`) with our ClientId and the user's DB tenant GUID as the `state` parameter. Detects if already connected and shows success/error query params.
+- `ConnectCallback.cshtml.cs` — `/connect-callback`, `[Authorize]` Razor Page GET handler. Validates `admin_consent=True`, cross-checks `state` against the logged-in user's TenantId claim, saves `MicrosoftTenantId` to DB, calls `TenantOnboardingService.SetupTenantAsync`. IME script creation failure is non-fatal (logged, tenant still connected).
 - `Dashboard.razor` — `/dashboard`, `[Authorize]`, `@layout DashboardLayout`, wrapped in `SubscriptionGate`
 - `DeviceDetail.razor` — `/device/{id}`, `[Authorize]`, `@layout DashboardLayout`
   - Shows "Stuck" badge and yellow warning banner when any app has `InstallState == "failed"`
@@ -65,12 +70,10 @@ Full working skeleton running against animated mock data. All major SaaS infrast
 - `_Imports.razor` — global usings including auth namespaces
 
 ### What's NOT built yet
-- Microsoft OAuth tenant connect flow — customers click "Connect your tenant", grant permissions, we store their tenant credentials
-- Auto-create IME remediation script during onboarding — during connect flow, create the "Restart IME Service" Proactive Remediation in their Intune, store the script ID in `Tenant.RemediationScriptId`
-- Multi-tenant worker — currently polls mock data. Needs to loop over all DB tenants and poll each one's Graph API
+- Multi-tenant worker — currently polls mock data. Needs to loop over all DB tenants and poll each one's Graph API with the right MicrosoftTenantId
 - Email notifications (only Teams webhook exists)
 - Azure deployment
-- Microsoft app verification (removes "unverified app" consent warning)
+- Microsoft app verification (removes "unverified app" consent warning on the admin consent screen)
 
 ## How to run locally
 
@@ -97,17 +100,20 @@ Landing page at `http://localhost:5000`, dashboard at `/dashboard`.
 | Stripe billing | Fill `Stripe` config + `AppUrl`, add `/billing/webhook` in Stripe dashboard |
 
 ## Architecture notes
-- Login/Signup/Logout are **Razor Pages** — required for cookie `SignInAsync` HTTP redirects. Blazor can't do this over WebSocket.
+- Login/Signup/Logout and ConnectCallback are **Razor Pages** — required for cookie `SignInAsync`/HTTP redirects. Blazor can't do this over WebSocket.
 - `MockGraphService` is **Singleton** — so animation state persists between worker polls.
 - `SubscriptionGate` and `DeviceDetail` use `[CascadingParameter] Task<AuthenticationState>` to get TenantId from claims, then query DB directly.
 - Stripe webhook uses `AllowAnonymous()` and reads raw body before middleware — required for signature verification.
 - `RestartImeServiceAsync` uses Intune Proactive Remediations (`initiateOnDemandProactiveRemediation`) — NOT a full device reboot. Restarts only the IntuneManagementExtension Windows service.
-- `Tenant.RemediationScriptId` is null until the OAuth tenant connect flow creates the script during onboarding.
+- `Tenant.RemediationScriptId` is null until ConnectCallback calls `TenantOnboardingService.SetupTenantAsync`. Requires Intune Plan 2 / M365 E3+; if absent, DeviceDetail shows "Not Configured" state.
+- **OAuth connect flow**: `/connect-tenant` builds the consent URL → Microsoft redirects to `/connect-callback?admin_consent=True&tenant={theirTenantId}&state={ourDbGuid}` → we save `MicrosoftTenantId` and create the IME script.
+- `TenantOnboardingService` creates a `GraphServiceClient` scoped to the *customer's* tenant ID using *our* client credentials — this works because admin consent adds our service principal to their tenant.
+- `appsettings.json` has no `AzureAd:TenantId` — that field is no longer used since each customer's tenant ID comes from the DB after connect.
+- `GraphService.cs` (real implementation, currently not registered) still reads `AzureAd:TenantId` from config — this needs to be updated when building the multi-tenant worker to accept tenant ID as a constructor/method parameter instead.
 - Scoped CSS (`.razor.css`) used throughout — Blazor automatically scopes styles.
 
 ## Next priorities
-1. Microsoft OAuth tenant connect flow (biggest remaining feature)
-2. Auto-create IME remediation script in customer's tenant during onboarding
-3. Multi-tenant worker
-4. Email notifications
-5. Azure deployment
+1. Multi-tenant worker — `EnrollmentMonitorWorker` polls mock data only. Needs to query all `Tenant` rows where `MicrosoftTenantId` is set, create a `GraphServiceClient` per tenant using their TenantId + our credentials, poll real enrollments.
+2. Email notifications (SendGrid)
+3. Azure deployment
+4. Microsoft app verification

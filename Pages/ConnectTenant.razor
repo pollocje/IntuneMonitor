@@ -1,0 +1,143 @@
+@page "/connect-tenant"
+@layout DashboardLayout
+@attribute [Authorize]
+@using System.Security.Claims
+@using System.Web
+@using IntuneMonitor.Data
+@using IntuneMonitor.Data.Entities
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IConfiguration Config
+@inject NavigationManager Nav
+@inject AppDbContext Db
+
+<h2>Connect Microsoft Tenant</h2>
+
+@if (_tenant is not null && !string.IsNullOrEmpty(_tenant.MicrosoftTenantId))
+{
+    <div class="connect-card success-state">
+        <div class="big-check">✓</div>
+        <h3>Tenant Connected</h3>
+        <p>Your Microsoft tenant is connected to IntuneMonitor.</p>
+        <p class="tenant-id mono">@_tenant.MicrosoftTenantId</p>
+        @if (_tenant.RemediationScriptId is not null)
+        {
+            <p class="script-note">IME remediation script is configured and ready.</p>
+        }
+        else
+        {
+            <p class="script-note warn">Restart IME script was not created (your tenant may need Intune Plan 2 / M365 E3+).</p>
+        }
+        <a href="/settings" class="btn btn-secondary">Back to Settings</a>
+    </div>
+}
+else
+{
+    @if (_errorMessage is not null)
+    {
+        <div class="error-banner">@_errorMessage</div>
+    }
+    @if (_showSuccess)
+    {
+        <div class="success-banner">✓ Microsoft tenant connected! Check your settings page for connection status.</div>
+    }
+
+    <div class="connect-card">
+        <p class="connect-intro">
+            IntuneMonitor needs access to your Microsoft tenant to monitor Intune enrollments and
+            perform remote device actions. Click the button below to be taken to Microsoft's secure
+            admin consent page.
+        </p>
+
+        <div class="permissions-section">
+            <h3>Permissions requested</h3>
+            <div class="permission-list">
+                <div class="permission-item">
+                    <span class="perm-badge read">READ</span>
+                    <div>
+                        <strong>DeviceManagementManagedDevices.Read.All</strong>
+                        <p>Read device enrollment status and sync timestamps</p>
+                    </div>
+                </div>
+                <div class="permission-item">
+                    <span class="perm-badge read">READ</span>
+                    <div>
+                        <strong>DeviceManagementApps.Read.All</strong>
+                        <p>Read managed app assignments and per-device install state</p>
+                    </div>
+                </div>
+                <div class="permission-item">
+                    <span class="perm-badge write">WRITE</span>
+                    <div>
+                        <strong>DeviceManagementManagedDevices.ReadWrite.All</strong>
+                        <p>Trigger Force Sync on devices (does not modify device config or policies)</p>
+                    </div>
+                </div>
+                <div class="permission-item">
+                    <span class="perm-badge write">WRITE</span>
+                    <div>
+                        <strong>DeviceManagementManagedDevices.PrivilegedOperations.All</strong>
+                        <p>Run on-demand Proactive Remediation to restart the IME service on stuck devices</p>
+                    </div>
+                </div>
+                <div class="permission-item">
+                    <span class="perm-badge write">WRITE</span>
+                    <div>
+                        <strong>DeviceManagementConfiguration.ReadWrite.All</strong>
+                        <p>Create the "Restart IME Service" remediation script in your tenant (one-time setup only)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="consent-note">
+            <strong>Admin consent required.</strong> You must be a Global Administrator or Intune Administrator
+            in your Microsoft tenant to grant these permissions. Access can be revoked at any time from
+            Azure Portal → Enterprise Applications → IntuneMonitor.
+        </div>
+
+        <div class="connect-actions">
+            @if (string.IsNullOrEmpty(Config["AzureAd:ClientId"]))
+            {
+                <div class="config-warning">
+                    Azure AD is not configured yet. Set <code>AzureAd:ClientId</code> and <code>AzureAd:ClientSecret</code> in appsettings.json.
+                </div>
+            }
+            else
+            {
+                <a href="@_consentUrl" class="btn btn-primary btn-large">Connect Microsoft Tenant →</a>
+            }
+            <a href="/settings" class="btn-link">Cancel</a>
+        </div>
+    </div>
+}
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private Tenant? _tenant;
+    private string _consentUrl = "#";
+    private string? _errorMessage;
+    private bool _showSuccess;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is null) return;
+
+        var auth     = await AuthState;
+        var tenantId = Guid.Parse(auth.User.FindFirstValue("TenantId")!);
+
+        _tenant = await Db.Tenants.FindAsync(tenantId);
+
+        var query = HttpUtility.ParseQueryString(new Uri(Nav.Uri).Query);
+        _errorMessage = query["error"] == "access_denied"
+            ? "Access was denied. Please try again and accept the requested permissions."
+            : null;
+        _showSuccess = query["success"] == "1";
+
+        var clientId = Config["AzureAd:ClientId"] ?? "";
+        var appUrl   = (Config["AppUrl"] ?? "https://localhost:5001").TrimEnd('/');
+        var redirectUri = Uri.EscapeDataString($"{appUrl}/connect-callback");
+
+        _consentUrl = $"https://login.microsoftonline.com/common/adminconsent?client_id={clientId}&redirect_uri={redirectUri}&state={tenantId}";
+    }
+}

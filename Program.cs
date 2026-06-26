@@ -28,6 +28,7 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<StripeService>();
+builder.Services.AddScoped<TenantOnboardingService>();
 builder.Services.AddSingleton<IGraphService, MockGraphService>();
 builder.Services.AddHttpClient<INotificationService, TeamsNotificationService>();
 builder.Services.AddHostedService<EnrollmentMonitorWorker>();
