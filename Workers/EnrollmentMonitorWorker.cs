@@ -106,7 +106,7 @@ public class EnrollmentMonitorWorker : BackgroundService
             {
                 if (notified.Add(device.DeviceId))
                 {
-                    await _notifications.SendDeviceReadyAsync(device);
+                    await _notifications.SendDeviceReadyAsync(device, tenant);
                     await TrySaveEnrollmentRecordAsync(tenant.Id, device);
                 }
             }

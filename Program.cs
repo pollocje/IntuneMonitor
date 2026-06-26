@@ -32,7 +32,9 @@ builder.Services.AddScoped<TenantOnboardingService>();
 builder.Services.AddSingleton<MockGraphService>();
 builder.Services.AddSingleton<IGraphService>(sp => sp.GetRequiredService<MockGraphService>());
 builder.Services.AddSingleton<GraphServiceFactory>();
-builder.Services.AddHttpClient<INotificationService, TeamsNotificationService>();
+builder.Services.AddHttpClient<TeamsNotificationService>();
+builder.Services.AddTransient<EmailNotificationService>();
+builder.Services.AddTransient<INotificationService, NotificationService>();
 builder.Services.AddHostedService<EnrollmentMonitorWorker>();
 
 var app = builder.Build();

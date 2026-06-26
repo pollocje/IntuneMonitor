@@ -1,27 +1,24 @@
 using System.Text;
 using System.Text.Json;
+using IntuneMonitor.Data.Entities;
 using IntuneMonitor.Models;
 
 namespace IntuneMonitor.Services;
 
-public class TeamsNotificationService : INotificationService
+public class TeamsNotificationService
 {
     private readonly HttpClient _http;
-    private readonly string? _webhookUrl;
 
-    public TeamsNotificationService(HttpClient http, IConfiguration config)
+    public TeamsNotificationService(HttpClient http)
     {
         _http = http;
-        _webhookUrl = config["Notifications:TeamsWebhookUrl"];
     }
 
-    public async Task SendDeviceReadyAsync(DeviceEnrollment device)
+    public async Task SendDeviceReadyAsync(DeviceEnrollment device, Tenant? tenant = null)
     {
-        if (string.IsNullOrWhiteSpace(_webhookUrl))
-        {
-            Console.WriteLine("[Teams] No webhook URL configured — skipping notification.");
+        var webhookUrl = tenant?.TeamsWebhookUrl;
+        if (string.IsNullOrWhiteSpace(webhookUrl))
             return;
-        }
 
         var timeToReady = device.TimeToReady.HasValue
             ? $"{(int)device.TimeToReady.Value.TotalMinutes} minutes"
@@ -68,11 +65,9 @@ public class TeamsNotificationService : INotificationService
 
         var json = JsonSerializer.Serialize(payload);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        var response = await _http.PostAsync(_webhookUrl, content);
+        var response = await _http.PostAsync(webhookUrl, content);
 
         if (!response.IsSuccessStatusCode)
             Console.WriteLine($"[Teams] Notification failed: {response.StatusCode}");
-        else
-            Console.WriteLine($"[Teams] Notified: {device.DeviceName} is ready.");
     }
 }
