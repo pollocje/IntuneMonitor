@@ -20,8 +20,10 @@ IntuneMonitor fixes that. It watches your Intune enrollments in real time, notif
 - Restart IME Service — restart IntuneManagementExtension via Proactive Remediation (requires Intune Plan 2 / M365 E3+)
 
 **Notifications**
-- Teams Adaptive Card fired the moment a device is ready
-- Notification email (configurable per tenant in Settings)
+- Teams Adaptive Card when a device is ready
+- Slack Block Kit message when a device is ready
+- Email via SendGrid when a device is ready
+- All three are per-tenant, configured in the app Settings page
 
 **Tenant Setup**
 - One-click Microsoft tenant connect via admin consent — every permission explained before you click
@@ -35,12 +37,12 @@ IntuneMonitor fixes that. It watches your Intune enrollments in real time, notif
 
 ## Tech Stack
 
-- [ASP.NET Core](https://dotnet.microsoft.com/) — backend
-- [Blazor Server](https://learn.microsoft.com/en-us/aspnet/core/blazor/) — frontend (no JavaScript framework)
-- [SignalR](https://learn.microsoft.com/en-us/aspnet/core/signalr/introduction) — real-time dashboard updates
+- [ASP.NET Core](https://dotnet.microsoft.com/) + [Blazor Server](https://learn.microsoft.com/en-us/aspnet/core/blazor/) — backend and frontend
+- [SignalR](https://learn.microsoft.com/en-us/aspnet/core/signalr/introduction) — real-time dashboard updates, scoped to tenant groups
 - [Microsoft Graph API](https://learn.microsoft.com/en-us/graph/overview) — Intune device/app data, device actions, Proactive Remediations
-- [Entity Framework Core](https://learn.microsoft.com/en-us/ef/core/) + PostgreSQL — persistence and multi-tenant data
+- [Entity Framework Core](https://learn.microsoft.com/en-us/ef/core/) + PostgreSQL — multi-tenant persistence
 - [Stripe.net](https://stripe.com/docs/api) — subscription billing
+- [SendGrid](https://sendgrid.com/) — email notifications
 - [BCrypt.Net-Next](https://github.com/BcryptNet/bcrypt.net) — password hashing
 
 ---
@@ -50,33 +52,32 @@ IntuneMonitor fixes that. It watches your Intune enrollments in real time, notif
 ### Prerequisites
 
 - [.NET 8 SDK](https://dotnet.microsoft.com/download)
-- [PostgreSQL](https://www.postgresql.org/download/) (or run without a DB — auth/billing features will be unavailable)
+- [PostgreSQL](https://www.postgresql.org/download/) (or a free cloud DB like [Neon](https://neon.tech))
 - A Microsoft tenant with Intune (or use built-in mock data for development)
 
-### Run locally
+### Run locally (mock mode — no accounts needed)
 
 ```bash
 git clone https://github.com/pollocje/IntuneMonitor.git
 cd IntuneMonitor
-dotnet new blazorserver --force   # generates required Blazor boilerplate
 dotnet restore
 dotnet run
 ```
 
-Open `http://localhost:5000` — landing page at `/`, dashboard at `/dashboard`.
+Open `http://localhost:5000`. Mock mode runs automatically when no real tenant is connected — includes an animated enrollment demo and a stuck device (`LAPTOP-STUCK99`) with failed apps.
 
-Runs against **animated mock data** by default. Includes a stuck device (`LAPTOP-STUCK99`) with failed apps to demonstrate the warning banner and action buttons.
+> **DB note:** First run will fail if Postgres isn't configured. Comment out `AddDbContext` in `Program.cs` to run fully mock with no database.
 
 ### Set up the database
 
 ```bash
 dotnet tool install --global dotnet-ef
 dotnet ef migrations add InitialCreate
+dotnet ef migrations add AddSlackWebhookUrl
 dotnet ef database update
 ```
 
-Update the connection string in `appsettings.json` first:
-
+`appsettings.json` connection string:
 ```json
 {
   "ConnectionStrings": {
@@ -88,16 +89,19 @@ Update the connection string in `appsettings.json` first:
 ### Connect to a real Intune tenant
 
 1. Register a **multi-tenant** app in [Azure Portal](https://portal.azure.com) → App registrations
-   - Set "Supported account types" to "Accounts in any organizational directory"
-   - Add a redirect URI: `https://yourdomain.com/connect-callback`
-2. Add API permissions (application, requires admin consent):
-   - `DeviceManagementManagedDevices.Read.All`
-   - `DeviceManagementApps.Read.All`
-   - `DeviceManagementManagedDevices.ReadWrite.All` ← Force Sync
-   - `DeviceManagementManagedDevices.PrivilegedOperations.All` ← Restart IME
-   - `DeviceManagementConfiguration.ReadWrite.All` ← Create IME remediation script during onboarding
-3. Fill in `appsettings.json`:
+   - Supported account types: **Accounts in any organizational directory**
+   - Redirect URI (Web): `https://yourdomain.com/connect-callback`
+2. Add API permissions (Application type):
 
+| Permission | Used for |
+|---|---|
+| `DeviceManagementManagedDevices.Read.All` | Read device enrollment data |
+| `DeviceManagementApps.Read.All` | Read app install status |
+| `DeviceManagementManagedDevices.ReadWrite.All` | Force Sync |
+| `DeviceManagementManagedDevices.PrivilegedOperations.All` | Restart IME Service |
+| `DeviceManagementConfiguration.ReadWrite.All` | Create IME remediation script during onboarding |
+
+3. Fill in `appsettings.json`:
 ```json
 {
   "AzureAd": {
@@ -108,34 +112,54 @@ Update the connection string in `appsettings.json` first:
 }
 ```
 
-4. Customers connect their tenant by clicking **Connect Microsoft Tenant** in Settings → they're taken to Microsoft's admin consent page → after approval, we save their tenant ID and auto-create the IME remediation script
+4. Customers go to **Settings → Connect Microsoft Tenant** → grant consent → tenant is connected, IME script auto-created
 
-> **Note:** Restart IME Service requires Intune Plan 2 / M365 E3+ on the customer's tenant. If the tenant lacks the license, the script creation is skipped and the button shows "Not Configured" in the UI.
+> Restart IME Service requires Intune Plan 2 / M365 E3+. If absent, the button shows "Not Configured" in the UI.
 
-### Enable Teams notifications
+### Enable notifications
 
+All notification channels are configured **per-tenant in the Settings UI** — not in appsettings.json.
+
+**Teams:** Settings → Teams Webhook URL
+- In Teams: channel → ··· → Connectors → Incoming Webhook → Create → copy URL
+
+**Slack:** Settings → Slack Webhook URL
+- In Slack: Apps → Incoming Webhooks → Add → choose channel → copy `https://hooks.slack.com/services/...` URL
+
+**Email:** Settings → Notification Email — enter recipient address, then configure SendGrid in appsettings.json:
 ```json
 {
-  "Notifications": {
-    "TeamsWebhookUrl": "https://your-webhook-url"
+  "SendGrid": {
+    "ApiKey": "SG...",
+    "FromEmail": "notifications@yourdomain.com"
   }
 }
 ```
 
 ### Enable Stripe billing
 
-1. Create a product + recurring price in your [Stripe dashboard](https://dashboard.stripe.com)
-2. Add a webhook endpoint pointing to `https://yourdomain.com/billing/webhook`
+1. Create a product + recurring price ($10/month) in [Stripe dashboard](https://dashboard.stripe.com)
+2. Add webhook endpoint: `https://yourdomain.com/billing/webhook`
+   - Events: `customer.subscription.*`, `invoice.payment_failed`, `invoice.payment_succeeded`
 3. Fill in `appsettings.json`:
-
 ```json
 {
   "Stripe": {
     "SecretKey": "sk_live_...",
     "WebhookSecret": "whsec_...",
     "PriceId": "price_..."
-  },
-  "AppUrl": "https://yourdomain.com"
+  }
+}
+```
+
+### Admin dashboard
+
+Navigate to `/admin` while logged in with an email listed in `appsettings.json`:
+```json
+{
+  "Admin": {
+    "Emails": [ "you@example.com" ]
+  }
 }
 ```
 
@@ -149,8 +173,8 @@ IntuneMonitor/
 │   ├── AppDbContext.cs
 │   └── Entities/              # Tenant, AppUser, EnrollmentRecord
 ├── Hubs/
-│   └── EnrollmentHub.cs       # SignalR hub
-├── Models/                    # DeviceEnrollment, AppInstallStatus (IsFailed computed)
+│   └── EnrollmentHub.cs       # SignalR hub — tenant-scoped groups
+├── Models/                    # DeviceEnrollment, AppInstallStatus
 ├── Pages/
 │   ├── Index.razor            # Landing / marketing page (/)
 │   ├── Privacy.razor          # Privacy policy (/privacy)
@@ -160,32 +184,38 @@ IntuneMonitor/
 │   ├── Dashboard.razor        # Live enrollment dashboard (/dashboard)
 │   ├── History.razor          # Completed enrollment history + stats (/history)
 │   ├── DeviceDetail.razor     # Per-device detail + Force Sync / Restart IME (/device/{id})
-│   ├── Settings.razor         # Notification config, subscription status (/settings)
+│   ├── Settings.razor         # Notifications, subscription, tenant connect (/settings)
+│   ├── Admin/
+│   │   └── Index.razor        # SaaS admin — all tenants, MRR, status (/admin)
 │   ├── Account/
 │   │   ├── Login.cshtml       # Sign in (/account/login)
 │   │   ├── Signup.cshtml      # Create account (/account/signup)
-│   │   └── Logout.cshtml.cs   # Sign out — supports GET and POST
+│   │   └── Logout.cshtml.cs   # Sign out
 │   └── Billing/
 │       ├── Checkout.cshtml.cs # Redirects to Stripe (/billing/checkout)
 │       └── Success.cshtml     # Post-payment confirmation (/billing/success)
 ├── Services/
-│   ├── IGraphService.cs       # GetRecentEnrollmentsAsync, SyncDeviceAsync, RestartImeServiceAsync
-│   ├── MockGraphService.cs    # Animated mock — includes stuck/failed device for demo
-│   ├── GraphService.cs        # Real Graph API — syncDevice + initiateOnDemandProactiveRemediation
+│   ├── IGraphService.cs
+│   ├── MockGraphService.cs    # Animated mock with stuck device demo
+│   ├── GraphService.cs        # Real Graph API implementation
+│   ├── GraphServiceFactory.cs # Creates per-tenant GraphService instances
 │   ├── INotificationService.cs
+│   ├── NotificationService.cs # Composite — calls Teams + Slack + Email
 │   ├── TeamsNotificationService.cs
-│   ├── AuthService.cs         # Sign up, login, BCrypt password hashing
-│   ├── StripeService.cs       # Checkout sessions, webhook handling
-│   └── TenantOnboardingService.cs  # Creates IME remediation script in customer's tenant after OAuth consent
+│   ├── SlackNotificationService.cs
+│   ├── EmailNotificationService.cs
+│   ├── AuthService.cs
+│   ├── StripeService.cs
+│   └── TenantOnboardingService.cs
 ├── Shared/
-│   ├── DashboardLayout.razor  # Sticky nav (logo, links, user email, sign out)
-│   ├── SummaryCards.razor     # Stat cards (Total/Waiting/Installing/Ready)
-│   ├── SubscriptionGate.razor # Blocks dashboard if trial/subscription expired
-│   ├── RedirectToLogin.razor  # Auth redirect component
-│   └── EmptyLayout.razor      # Layout for public pages
+│   ├── DashboardLayout.razor  # Sticky nav (Dashboard, History, Settings)
+│   ├── SummaryCards.razor
+│   ├── SubscriptionGate.razor
+│   ├── RedirectToLogin.razor
+│   └── EmptyLayout.razor
 ├── Workers/
-│   └── EnrollmentMonitorWorker.cs  # Background polling + notifications
-└── App.razor                  # CascadingAuthenticationState wrapper
+│   └── EnrollmentMonitorWorker.cs  # Multi-tenant polling, mock fallback
+└── App.razor
 ```
 
 ---
@@ -193,23 +223,24 @@ IntuneMonitor/
 ## Roadmap
 
 - [x] Live enrollment dashboard with real-time SignalR updates
+- [x] Multi-tenant worker — polls all connected tenants, mock fallback when none connected
 - [x] Animated mock data with stuck/failed device for demo
-- [x] Teams webhook notifications (Adaptive Cards)
-- [x] Device detail page
+- [x] Device detail page with Force Sync and Restart IME actions
 - [x] Summary stat cards
+- [x] Enrollment history page with time-to-ready stats
 - [x] Database schema (EF Core + PostgreSQL)
-- [x] Real Graph API implementation
+- [x] Real Graph API — per-tenant via GraphServiceFactory
 - [x] Landing / marketing page
 - [x] User auth — sign up, login, logout, BCrypt, cookie sessions
 - [x] Stripe subscriptions — checkout, webhooks, subscription gate
-- [x] Dashboard nav bar and settings page
-- [x] Force Sync — remotely trigger Intune sync via Graph API
-- [x] Restart IME Service — via Intune Proactive Remediation, no RMM needed
-- [x] Microsoft OAuth tenant connect flow — admin consent, permission disclosure page
+- [x] Settings page — notifications, subscription, tenant connect
+- [x] Teams webhook notifications (Adaptive Cards, per-tenant)
+- [x] Slack webhook notifications (Block Kit, per-tenant)
+- [x] Email notifications via SendGrid (per-tenant)
+- [x] Microsoft OAuth tenant connect flow — admin consent, permission disclosure
 - [x] Auto-create IME remediation script during tenant onboarding
-- [x] Privacy policy + Terms of Service pages
-- [x] Enrollment history page with time-to-ready stats
-- [ ] Multi-tenant worker (poll all connected tenants)
-- [ ] Email notifications
+- [x] Admin dashboard — tenant list, MRR, trial countdowns
+- [x] Privacy policy + Terms of Service
 - [ ] Azure deployment
-- [ ] Microsoft app verification (removes "unverified app" warning)
+- [ ] Microsoft Publisher Verification (removes "unverified app" warning)
+- [ ] DeviceDetail Force Sync / Restart IME for real tenants (currently uses MockGraphService)
