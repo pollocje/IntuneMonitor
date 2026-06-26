@@ -1,0 +1,194 @@
+@page "/onboarding"
+@layout EmptyLayout
+@attribute [Authorize]
+@using System.Security.Claims
+@using IntuneMonitor.Data
+@using IntuneMonitor.Data.Entities
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AppDbContext Db
+@inject NavigationManager Nav
+
+<div class="onboarding-shell">
+
+    <nav class="onboarding-nav">
+        <span class="logo">IntuneMonitor</span>
+        <a href="/dashboard" class="skip-link">Skip for now →</a>
+    </nav>
+
+    <div class="onboarding-body">
+
+        @if (_tenant is null)
+        {
+            <p>Loading...</p>
+        }
+        else
+        {
+            <div class="welcome-block">
+                <h1>Welcome to IntuneMonitor</h1>
+                <p class="welcome-sub">
+                    Your 14-day free trial has started — no credit card needed.
+                    Let's get you set up in 2 steps.
+                </p>
+                <div class="progress-bar-wrap">
+                    <div class="progress-bar-track">
+                        <div class="progress-bar-fill" style="width: @(_stepsComplete * 50)%"></div>
+                    </div>
+                    <span class="progress-label">@_stepsComplete of 2 steps complete</span>
+                </div>
+            </div>
+
+            @if (_stepsComplete == 2)
+            {
+                <div class="all-done-banner">
+                    ✓ You're all set! IntuneMonitor is watching your enrollments.
+                </div>
+            }
+
+            <!-- STEP 1: Connect tenant -->
+            <div class="step-card @(_tenantConnected ? "done" : "active")">
+                <div class="step-indicator">
+                    @if (_tenantConnected)
+                    {
+                        <span class="step-check">✓</span>
+                    }
+                    else
+                    {
+                        <span class="step-number">1</span>
+                    }
+                </div>
+                <div class="step-content">
+                    <div class="step-header">
+                        <div>
+                            <h2>Connect your Microsoft tenant</h2>
+                            <p>
+                                Grant IntuneMonitor read access to your Intune environment
+                                so we can start monitoring device enrollments in real time.
+                            </p>
+                        </div>
+                        @if (_tenantConnected)
+                        {
+                            <div class="step-done-badge">Connected ✓</div>
+                        }
+                        else
+                        {
+                            <a href="/connect-tenant" class="btn btn-primary">Connect Tenant →</a>
+                        }
+                    </div>
+                    @if (_tenantConnected)
+                    {
+                        <div class="step-detail">
+                            Tenant ID: <span class="mono">@_tenant.MicrosoftTenantId</span>
+                            @if (_tenant.RemediationScriptId is not null)
+                            {
+                                <span class="detail-pill">IME script ready</span>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="permission-summary">
+                            <span class="perm-tag">Read device data</span>
+                            <span class="perm-tag">Read app status</span>
+                            <span class="perm-tag">Force Sync</span>
+                            <span class="perm-tag">Restart IME</span>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- STEP 2: Notifications -->
+            <div class="step-card @(_notificationsConfigured ? "done" : _tenantConnected ? "active" : "inactive")">
+                <div class="step-indicator">
+                    @if (_notificationsConfigured)
+                    {
+                        <span class="step-check">✓</span>
+                    }
+                    else
+                    {
+                        <span class="step-number">2</span>
+                    }
+                </div>
+                <div class="step-content">
+                    <div class="step-header">
+                        <div>
+                            <h2>Set up notifications</h2>
+                            <p>
+                                Get alerted the moment a device finishes enrolling —
+                                via Teams, Slack, or email. You can configure multiple channels.
+                            </p>
+                        </div>
+                        @if (_notificationsConfigured)
+                        {
+                            <div class="step-done-badge">Configured ✓</div>
+                        }
+                        else
+                        {
+                            <a href="/settings" class="btn @(_tenantConnected ? "btn-primary" : "btn-secondary")">
+                                Configure →
+                            </a>
+                        }
+                    </div>
+                    @if (_notificationsConfigured)
+                    {
+                        <div class="step-detail">
+                            @if (!string.IsNullOrEmpty(_tenant.TeamsWebhookUrl))
+                            {
+                                <span class="detail-pill">Teams</span>
+                            }
+                            @if (!string.IsNullOrEmpty(_tenant.SlackWebhookUrl))
+                            {
+                                <span class="detail-pill">Slack</span>
+                            }
+                            @if (!string.IsNullOrEmpty(_tenant.NotificationEmail))
+                            {
+                                <span class="detail-pill">Email → @_tenant.NotificationEmail</span>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="notif-options">
+                            <span class="notif-option">Teams</span>
+                            <span class="notif-option">Slack</span>
+                            <span class="notif-option">Email</span>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="onboarding-footer">
+                <a href="/dashboard" class="btn btn-primary btn-large">
+                    @(_stepsComplete == 2 ? "Go to Dashboard →" : "Go to Dashboard (finish later) →")
+                </a>
+                <p class="footer-note">You can complete setup anytime from the Settings page.</p>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private Tenant? _tenant;
+    private bool _tenantConnected;
+    private bool _notificationsConfigured;
+    private int _stepsComplete;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is null) return;
+
+        var auth     = await AuthState;
+        var tenantId = Guid.Parse(auth.User.FindFirstValue("TenantId")!);
+
+        _tenant = await Db.Tenants.FindAsync(tenantId);
+        if (_tenant is null) return;
+
+        _tenantConnected        = !string.IsNullOrEmpty(_tenant.MicrosoftTenantId);
+        _notificationsConfigured = !string.IsNullOrEmpty(_tenant.TeamsWebhookUrl)
+                                || !string.IsNullOrEmpty(_tenant.SlackWebhookUrl)
+                                || !string.IsNullOrEmpty(_tenant.NotificationEmail);
+
+        _stepsComplete = (_tenantConnected ? 1 : 0) + (_notificationsConfigured ? 1 : 0);
+    }
+}

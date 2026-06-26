@@ -47,7 +47,7 @@ public class SignupModel : PageModel
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             await HttpContext.SignInAsync(new ClaimsPrincipal(identity));
 
-            return Redirect("/dashboard");
+            return Redirect("/onboarding");
         }
         catch (InvalidOperationException ex)
         {
