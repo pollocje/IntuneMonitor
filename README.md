@@ -32,6 +32,7 @@ IntuneMonitor fixes that. It watches your Intune enrollments in real time, notif
 **Account & Billing**
 - Sign up, login, 14-day free trial — no credit card required
 - $10/month Stripe subscription with full checkout and billing lifecycle
+- Guided onboarding flow after signup — connect tenant, set up notifications, progress bar
 
 ---
 
@@ -184,6 +185,7 @@ IntuneMonitor/
 │   ├── Dashboard.razor        # Live enrollment dashboard (/dashboard)
 │   ├── History.razor          # Completed enrollment history + stats (/history)
 │   ├── DeviceDetail.razor     # Per-device detail + Force Sync / Restart IME (/device/{id})
+│   ├── Onboarding.razor       # Post-signup setup checklist (/onboarding)
 │   ├── Settings.razor         # Notifications, subscription, tenant connect (/settings)
 │   ├── Admin/
 │   │   └── Index.razor        # SaaS admin — all tenants, MRR, status (/admin)
@@ -240,6 +242,7 @@ IntuneMonitor/
 - [x] Microsoft OAuth tenant connect flow — admin consent, permission disclosure
 - [x] Auto-create IME remediation script during tenant onboarding
 - [x] Admin dashboard — tenant list, MRR, trial countdowns
+- [x] Guided onboarding flow after signup
 - [x] Privacy policy + Terms of Service
 - [ ] Azure deployment
 - [ ] Microsoft Publisher Verification (removes "unverified app" warning)
