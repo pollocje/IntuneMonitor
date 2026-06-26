@@ -10,11 +10,13 @@ IntuneMonitor fixes that. It watches your Intune enrollments in real time and no
 
 ## Features
 
-- **Live enrollment dashboard** — see every device currently enrolling, with per-app install progress
+- **Live enrollment dashboard** — see every device currently enrolling with per-app install progress bars
 - **Real-time updates** — dashboard refreshes automatically via SignalR, no page reloads
-- **Instant notifications** — get a Teams or email alert the moment a device is ready
-- **Failure visibility** — see which apps are stuck or failed so you can act immediately instead of finding out an hour later
-- **Time-to-ready tracking** — know how long enrollments are actually taking across your fleet
+- **Teams & email notifications** — get alerted the moment a device is ready
+- **Failure visibility** — see which apps are stuck or failed immediately
+- **Device detail view** — drill into any device to see full app status and enrollment timeline
+- **Enrollment history** — track how long enrollments take across your fleet over time
+- **Time-to-ready tracking** — know exactly how long each enrollment took
 
 ---
 
@@ -24,6 +26,7 @@ IntuneMonitor fixes that. It watches your Intune enrollments in real time and no
 - [Blazor Server](https://learn.microsoft.com/en-us/aspnet/core/blazor/) — frontend (no JavaScript framework)
 - [SignalR](https://learn.microsoft.com/en-us/aspnet/core/signalr/introduction) — real-time dashboard updates
 - [Microsoft Graph API](https://learn.microsoft.com/en-us/graph/overview) — Intune device and app data
+- [Entity Framework Core](https://learn.microsoft.com/en-us/ef/core/) + PostgreSQL — persistence and multi-tenant data
 
 ---
 
@@ -32,7 +35,8 @@ IntuneMonitor fixes that. It watches your Intune enrollments in real time and no
 ### Prerequisites
 
 - [.NET 8 SDK](https://dotnet.microsoft.com/download)
-- A Microsoft tenant with Intune (or run against mock data for development)
+- [PostgreSQL](https://www.postgresql.org/download/) (or run against mock data without it)
+- A Microsoft tenant with Intune (or use built-in mock data for development)
 
 ### Run locally
 
@@ -43,17 +47,32 @@ dotnet restore
 dotnet run
 ```
 
-Open `http://localhost:5000` in your browser.
+Open `http://localhost:5000` — the landing page loads at `/`, the dashboard is at `/dashboard`.
 
-By default the app runs against **mock data** so you can explore the dashboard without a real Intune tenant.
+By default the app runs against **animated mock data** so you can explore the full UI without a real Intune tenant or database.
 
-### Connect to a real tenant
+### Set up the database
+
+Install the EF CLI tool if you don't have it:
+
+```bash
+dotnet tool install --global dotnet-ef
+```
+
+Update the connection string in `appsettings.json`, then run:
+
+```bash
+dotnet ef migrations add InitialCreate
+dotnet ef database update
+```
+
+### Connect to a real Intune tenant
 
 1. Register an app in [Azure Portal](https://portal.azure.com) → App registrations
 2. Add these API permissions (application):
    - `DeviceManagementManagedDevices.Read.All`
    - `DeviceManagementApps.Read.All`
-3. Add your credentials to `appsettings.json`:
+3. Fill in `appsettings.json`:
 
 ```json
 {
@@ -67,13 +86,62 @@ By default the app runs against **mock data** so you can explore the dashboard w
 
 4. In `Program.cs`, swap `MockGraphService` for `GraphService`
 
+### Enable Teams notifications
+
+Create an incoming webhook in any Teams channel and paste the URL into `appsettings.json`:
+
+```json
+{
+  "Notifications": {
+    "TeamsWebhookUrl": "https://your-webhook-url"
+  }
+}
+```
+
+---
+
+## Project Structure
+
+```
+IntuneMonitor/
+├── Data/
+│   ├── AppDbContext.cs
+│   └── Entities/          # Tenant, AppUser, EnrollmentRecord
+├── Hubs/
+│   └── EnrollmentHub.cs   # SignalR hub
+├── Models/                # DeviceEnrollment, AppInstallStatus
+├── Pages/
+│   ├── Index.razor        # Landing / marketing page
+│   ├── Dashboard.razor    # Live enrollment dashboard (/dashboard)
+│   └── DeviceDetail.razor # Per-device detail view (/device/{id})
+├── Services/
+│   ├── IGraphService.cs
+│   ├── MockGraphService.cs  # Animated mock — no tenant needed
+│   ├── GraphService.cs      # Real Graph API implementation
+│   ├── INotificationService.cs
+│   └── TeamsNotificationService.cs
+├── Shared/
+│   ├── SummaryCards.razor   # Stat cards component
+│   └── EmptyLayout.razor    # Layout for public pages
+└── Workers/
+    └── EnrollmentMonitorWorker.cs  # Background polling + notifications
+```
+
 ---
 
 ## Roadmap
 
-- [ ] Real Microsoft Graph API integration
-- [ ] Teams and email notifications
-- [ ] Multi-tenant support
-- [ ] Per-device drill-down view
-- [ ] Enrollment history and analytics
-- [ ] Configurable required app lists per device group
+- [x] Live enrollment dashboard with real-time SignalR updates
+- [x] Animated mock data for development
+- [x] Teams webhook notifications (Adaptive Cards)
+- [x] Device detail page
+- [x] Summary stat cards
+- [x] Database schema (EF Core + PostgreSQL)
+- [x] Real Graph API implementation
+- [x] Landing / marketing page
+- [ ] User authentication (sign up / login)
+- [ ] Microsoft OAuth tenant connect flow
+- [ ] Multi-tenant worker
+- [ ] Email notifications
+- [ ] Stripe subscription payments
+- [ ] Azure deployment
