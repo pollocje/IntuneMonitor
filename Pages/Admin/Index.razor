@@ -89,11 +89,15 @@ else
                             {
                                 <span class="notif-badge">Teams</span>
                             }
+                            @if (!string.IsNullOrEmpty(row.SlackWebhookUrl))
+                            {
+                                <span class="notif-badge slack">Slack</span>
+                            }
                             @if (!string.IsNullOrEmpty(row.NotificationEmail))
                             {
                                 <span class="notif-badge">Email</span>
                             }
-                            @if (string.IsNullOrEmpty(row.TeamsWebhookUrl) && string.IsNullOrEmpty(row.NotificationEmail))
+                            @if (string.IsNullOrEmpty(row.TeamsWebhookUrl) && string.IsNullOrEmpty(row.SlackWebhookUrl) && string.IsNullOrEmpty(row.NotificationEmail))
                             {
                                 <span class="notif-none">None</span>
                             }

@@ -79,6 +79,20 @@ else
         </div>
 
         <div class="field-group">
+            <label>Slack Webhook URL</label>
+            <p class="field-hint">
+                In Slack: go to your workspace → Apps → Incoming Webhooks → Add → choose a channel.
+                Paste the webhook URL here.
+            </p>
+            <div class="input-row">
+                <input type="url" @bind="_slackWebhookUrl" placeholder="https://hooks.slack.com/services/..." />
+                <button class="btn btn-secondary" @onclick="SaveSlackWebhook" disabled="@_saving">
+                    @(_saving ? "Saving..." : "Save")
+                </button>
+            </div>
+        </div>
+
+        <div class="field-group">
             <label>Notification Email</label>
             <p class="field-hint">Get an email when a device finishes enrolling.</p>
             <div class="input-row">
@@ -125,6 +139,7 @@ else
     private Tenant? _tenant;
     private AppUser? _user;
     private string _teamsWebhookUrl = string.Empty;
+    private string _slackWebhookUrl = string.Empty;
     private string _notificationEmail = string.Empty;
     private bool _saving = false;
     private string? _savedMessage;
@@ -142,7 +157,8 @@ else
 
         if (_tenant is not null)
         {
-            _teamsWebhookUrl   = _tenant.TeamsWebhookUrl ?? string.Empty;
+            _teamsWebhookUrl   = _tenant.TeamsWebhookUrl   ?? string.Empty;
+            _slackWebhookUrl   = _tenant.SlackWebhookUrl   ?? string.Empty;
             _notificationEmail = _tenant.NotificationEmail ?? string.Empty;
         }
     }
@@ -154,6 +170,19 @@ else
         _tenant.TeamsWebhookUrl = string.IsNullOrWhiteSpace(_teamsWebhookUrl) ? null : _teamsWebhookUrl;
         await Db.SaveChangesAsync();
         _savedMessage = "Teams webhook saved.";
+        _saving = false;
+        StateHasChanged();
+        await Task.Delay(3000);
+        _savedMessage = null;
+    }
+
+    private async Task SaveSlackWebhook()
+    {
+        if (_tenant is null) return;
+        _saving = true;
+        _tenant.SlackWebhookUrl = string.IsNullOrWhiteSpace(_slackWebhookUrl) ? null : _slackWebhookUrl;
+        await Db.SaveChangesAsync();
+        _savedMessage = "Slack webhook saved.";
         _saving = false;
         StateHasChanged();
         await Task.Delay(3000);

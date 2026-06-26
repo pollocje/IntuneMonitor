@@ -19,6 +19,7 @@ public class Tenant
     public string? StripeSubscriptionId { get; set; }
 
     public string? TeamsWebhookUrl { get; set; }
+    public string? SlackWebhookUrl { get; set; }
     public string? NotificationEmail { get; set; }
 
     // Set during onboarding when we create the "Restart IME Service" remediation script in their tenant

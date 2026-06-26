@@ -151,6 +151,11 @@
     border-radius: 4px;
 }
 
+.notif-badge.slack {
+    background: #fce7f3;
+    color: #9d174d;
+}
+
 .notif-none {
     color: #ccc;
     font-size: 0.85rem;

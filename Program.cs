@@ -33,6 +33,7 @@ builder.Services.AddSingleton<MockGraphService>();
 builder.Services.AddSingleton<IGraphService>(sp => sp.GetRequiredService<MockGraphService>());
 builder.Services.AddSingleton<GraphServiceFactory>();
 builder.Services.AddHttpClient<TeamsNotificationService>();
+builder.Services.AddHttpClient<SlackNotificationService>();
 builder.Services.AddTransient<EmailNotificationService>();
 builder.Services.AddTransient<INotificationService, NotificationService>();
 builder.Services.AddHostedService<EnrollmentMonitorWorker>();
