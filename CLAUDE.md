@@ -54,6 +54,7 @@ Solo project by a final-year CS student doing an IT co-op at a provincial govern
 - `Terms.razor` — `/terms`, `@layout EmptyLayout`. Terms of service (Ontario governing law, $10/month, 14-day trial, acceptable use, liability).
 - `ConnectTenant.razor` — `/connect-tenant`, `[Authorize]`. Explains all 5 permissions being requested. Builds admin consent URL with our `ClientId` and user's DB tenant GUID as `state`. Shows config warning if `AzureAd:ClientId` not set. Shows success/error states from query params.
 - `ConnectCallback.cshtml.cs` — `/connect-callback`, `[Authorize]` Razor Page. Validates `admin_consent=True`, verifies `state` matches logged-in user's TenantId claim, saves `MicrosoftTenantId` to DB, calls `TenantOnboardingService.SetupTenantAsync`. IME script failure is non-fatal.
+- `Onboarding.razor` — `/onboarding`, `[Authorize]`, `@layout EmptyLayout`. Post-signup checklist. 2 steps: (1) Connect Microsoft tenant, (2) Set up notifications. Progress bar fills as steps complete. Each step reads live state from DB — shows green check + details when done, action button when not. Step 2 grays out while step 1 is incomplete. "All set!" banner when both done. "Skip for now" in nav and footer always let user go to dashboard. Signup.cshtml.cs redirects here instead of `/dashboard` after registration.
 - `Dashboard.razor` — `/dashboard`, `[Authorize]`, `@layout DashboardLayout`, wrapped in `SubscriptionGate`. Passes `?tenantId=` to hub URL so SignalR puts the connection in the right group.
 - `History.razor` — `/history`, `[Authorize]`, `@layout DashboardLayout`. 4 stat cards (count, avg/fastest/slowest time to ready). Table with color-coded duration pills (green < 25 min, yellow < 45 min, red otherwise). Falls back to 7 hardcoded demo rows if DB is empty or unavailable, with a yellow banner noting it's sample data.
 - `DeviceDetail.razor` — `/device/{id}`, `[Authorize]`. Stuck badge + warning banner when apps failed. Force Sync button (always shown). Restart IME button (shown only if `Tenant.RemediationScriptId` set, else "Not Configured" with settings link). Buttons disable during action, show confirmation/error.
@@ -193,4 +194,6 @@ dotnet run
 ## Next priorities
 1. **Azure deployment** — app needs a real URL before you can test OAuth consent or Stripe webhooks end-to-end
 2. **Microsoft Publisher Verification** — removes "unverified app" warning on consent screen
-3. **DeviceDetail multi-tenant** — Force Sync / Restart IME in DeviceDetail currently use `IGraphService` (MockGraphService). In real mode these need to create a `GraphService` for the user's tenant via `GraphServiceFactory` instead.
+3. **Trial expiry warning email** — background job that fires 3 days before trial ends nudging users to subscribe
+4. **Password reset** — no recovery flow exists yet; users who forget their password are locked out
+5. **DeviceDetail multi-tenant** — Force Sync / Restart IME in DeviceDetail currently use `IGraphService` (MockGraphService). In real mode these need to create a `GraphService` for the user's tenant via `GraphServiceFactory` instead.
