@@ -22,7 +22,7 @@ IntuneMonitor fixes that. It watches your Intune enrollments in real time, notif
 - **Microsoft tenant connect** — one-click admin consent flow; we request only what's needed and explain every permission before you click
 - **Auto-setup IME remediation** — the Restart IME script is created automatically in your tenant during onboarding (requires Intune Plan 2 / M365 E3+)
 - **User accounts** — sign up, log in, 14-day free trial, cookie-based auth
-- **Stripe subscriptions** — $49/month, full checkout and billing lifecycle handled automatically
+- **Stripe subscriptions** — $10/month, full checkout and billing lifecycle handled automatically
 - **Privacy policy + Terms of Service** — real legal pages at `/privacy` and `/terms`
 
 ---

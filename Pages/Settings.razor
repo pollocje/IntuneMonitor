@@ -54,7 +54,7 @@ else
         @if (_tenant.SubscriptionStatus != SubscriptionStatus.Active)
         {
             <a href="/billing/checkout" class="btn btn-primary">
-                @(_tenant.SubscriptionStatus == SubscriptionStatus.Trial ? "Subscribe — $49/month" : "Reactivate Subscription")
+                @(_tenant.SubscriptionStatus == SubscriptionStatus.Trial ? "Subscribe — $10/month" : "Reactivate Subscription")
             </a>
         }
     </div>
