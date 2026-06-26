@@ -1,7 +1,7 @@
 # IntuneMonitor — Project Context
 
 ## What this is
-A SaaS product that monitors Microsoft Intune device enrollments in real time. When a laptop is reimaged and enrolled in Intune, IT admins have no way to know when all the required apps have finished installing — they just wait and guess. This app watches the enrollment, shows a live dashboard of app install progress, and sends a Teams/email notification the moment a device is fully ready.
+A SaaS product that monitors Microsoft Intune device enrollments in real time. When a laptop is reimaged and enrolled in Intune, IT admins have no way to know when all the required apps have finished installing — they just wait and guess. This app watches the enrollment, shows a live dashboard of app install progress, and sends a Teams notification the moment a device is fully ready.
 
 Target customers: IT admins at SMBs, MSPs who reprovision devices regularly.
 
@@ -12,86 +12,83 @@ Solo project by a final-year CS student doing an IT co-op at a provincial govern
 - **ASP.NET Core** + **Blazor Server** — backend and frontend (no JavaScript framework)
 - **SignalR** — real-time dashboard updates pushed to browser
 - **Microsoft Graph API** — pulls Intune device and app install status data
-- **Microsoft.Graph NuGet SDK** + **Azure.Identity** — Graph API client
-- Teams webhook (Adaptive Cards) for notifications
+- **Entity Framework Core** + **PostgreSQL** — persistence, multi-tenant data model
+- **BCrypt.Net-Next** — password hashing
+- **Stripe.net** — subscription billing
+- **Teams webhook (Adaptive Cards)** — device ready notifications
 
 ## Current state
-The project is a working skeleton with mock data. Nothing requires a real Intune tenant to run yet.
+The project is a full working skeleton. Runs against animated mock data with no external dependencies. All major SaaS infrastructure is wired up as skeletons ready to activate with real credentials.
 
 ### What's built
-- `Models/` — `DeviceEnrollment` and `AppInstallStatus` models
-- `Services/IGraphService` — interface for data access
-- `Services/MockGraphService` — simulates enrollment progress (apps install one at a time, new devices spawn when all are ready)
-- `Services/GraphService` — real Graph API implementation, ready to use but needs credentials
-- `Services/INotificationService` + `TeamsNotificationService` — sends Adaptive Card to Teams webhook when a device is fully enrolled
-- `Workers/EnrollmentMonitorWorker` — background service that polls every 10 seconds, pushes to SignalR hub, fires notifications
+- `Models/` — `DeviceEnrollment`, `AppInstallStatus`
+- `Services/IGraphService` + `MockGraphService` — animated mock (apps install one at a time, new devices spawn when all ready). Singleton so state persists between polls.
+- `Services/GraphService` — real Graph API implementation using `ClientSecretCredential`. Swap in via `Program.cs` when credentials are ready.
+- `Services/INotificationService` + `TeamsNotificationService` — sends Adaptive Card to Teams webhook. Gracefully skips if no URL configured.
+- `Services/AuthService` — BCrypt password hashing, creates Tenant + AppUser on registration, 14-day trial
+- `Services/StripeService` — creates Stripe Checkout sessions, handles all webhook events (subscription created/updated/deleted, payment succeeded/failed), updates `Tenant.SubscriptionStatus`
+- `Workers/EnrollmentMonitorWorker` — polls every 10s, pushes to SignalR hub, fires notifications. Tracks notified devices in-memory `HashSet` (resets on restart — acceptable for now)
 - `Hubs/EnrollmentHub` — SignalR hub
-- `Pages/Dashboard.razor` — live enrollment table with progress bars, summary stat cards, links to detail page
-- `Pages/DeviceDetail.razor` — per-device view showing all app statuses and metadata
-- `Shared/SummaryCards.razor` — 4 stat cards (Total, Waiting, Installing, Ready)
-- `appsettings.json` — config placeholders for Azure AD credentials and Teams webhook URL
+- `Data/AppDbContext` + `Entities/` — EF Core with Tenant, AppUser, EnrollmentRecord. Tenant has StripeCustomerId, StripeSubscriptionId, SubscriptionStatus, TrialEndsAt.
+- `Pages/Index.razor` — full marketing landing page at `/` (hero, pain points, features, how it works, pricing, footer). Uses `EmptyLayout` to skip Blazor chrome.
+- `Pages/Dashboard.razor` — at `/dashboard`, `[Authorize]`, wrapped in `SubscriptionGate`
+- `Pages/DeviceDetail.razor` — at `/device/{id}`, `[Authorize]`
+- `Pages/Account/Login.cshtml` + `Signup.cshtml` + `Logout.cshtml.cs` — Razor Pages (not Blazor) for proper cookie auth HTTP redirects
+- `Pages/Billing/Checkout.cshtml.cs` — GET redirect to Stripe Checkout
+- `Pages/Billing/Success.cshtml` — post-payment confirmation page
+- `Shared/SummaryCards.razor` — 4 stat cards
+- `Shared/SubscriptionGate.razor` — checks tenant subscription status from DB, shows upgrade prompt if expired
+- `Shared/RedirectToLogin.razor` — used by `App.razor` to redirect unauthenticated Blazor routes
+- `App.razor` — `CascadingAuthenticationState` + `AuthorizeRouteView` wrapper
+- `_Imports.razor` — global usings including auth namespaces
 
 ### What's NOT built yet
-- Real Graph API tested against a live tenant (needs Azure AD app registration with Intune permissions)
-- Multi-tenant support (currently single-tenant)
-- User authentication / accounts
-- Stripe payments / subscription gating
-- Landing/marketing page
+- Microsoft OAuth consent flow — customers connecting their own tenant (the "Connect your Microsoft tenant" button)
+- Multi-tenant worker — currently polls one hardcoded mock, needs to loop over all DB tenants
 - Email notifications (only Teams webhook exists)
-- Database (no persistence yet — state lives in memory)
 - Azure deployment
+- Microsoft app verification (removes "unverified app" warning customers see during OAuth consent)
 
 ## How to run locally
 
 ```bash
-dotnet new blazorserver -n IntuneMonitor --force
-dotnet add package Microsoft.AspNetCore.SignalR.Client
-dotnet add package Microsoft.Graph
-dotnet add package Azure.Identity
-```
-
-Delete the generated `Pages/Index.razor` (Dashboard.razor replaces it), then:
-
-```bash
+git clone https://github.com/pollocje/IntuneMonitor.git
+cd IntuneMonitor
+dotnet new blazorserver --force   # generates _Host.cshtml, MainLayout, wwwroot etc.
+dotnet restore
 dotnet run
 ```
 
-Runs on `http://localhost:5000` against mock data by default.
+Landing page at `http://localhost:5000`, dashboard at `/dashboard`.
 
-## Switching to real Intune data
-1. Register an app in Azure Portal → App registrations
-2. Grant API permissions: `DeviceManagementManagedDevices.Read.All` and `DeviceManagementApps.Read.All` (application permissions)
-3. Fill in `appsettings.json`:
-```json
-{
-  "AzureAd": {
-    "TenantId": "...",
-    "ClientId": "...",
-    "ClientSecret": "..."
-  }
-}
-```
-4. In `Program.cs`, swap `MockGraphService` for `GraphService`
+**First run will fail if DB is not set up** — either configure Postgres or comment out the `AddDbContext` line in `Program.cs` to run mock-only.
 
-## Enabling Teams notifications
-Paste a Teams incoming webhook URL into `appsettings.json`:
-```json
-{
-  "Notifications": {
-    "TeamsWebhookUrl": "https://..."
-  }
-}
+## Setting up the database
+```bash
+dotnet tool install --global dotnet-ef
+dotnet ef migrations add InitialCreate
+dotnet ef database update
 ```
+Update connection string in `appsettings.json` first.
+
+## Activating real features
+
+| Feature | What to do |
+|---|---|
+| Real Intune data | Fill `AzureAd` config, swap `MockGraphService` → `GraphService` in `Program.cs` |
+| Teams notifications | Paste webhook URL into `Notifications:TeamsWebhookUrl` |
+| Stripe billing | Fill `Stripe` config keys + `AppUrl`, add webhook in Stripe dashboard pointing to `/billing/webhook` |
 
 ## Architecture notes
-- `MockGraphService` is a singleton that maintains state between polls — this is intentional so the animation works
-- `EnrollmentMonitorWorker` tracks which devices it has already notified via an in-memory `HashSet` — this resets on app restart, which is fine for now
-- `IGraphService` and `INotificationService` are interfaces so real implementations can be swapped in without touching the worker or pages
-- Scoped CSS files (`.razor.css`) are used for component styling — Blazor automatically scopes them
+- Login/Signup/Logout are **Razor Pages** (`.cshtml`), not Blazor — required for cookie `SignInAsync` to issue HTTP redirects properly. Blazor components can't do this over WebSocket.
+- `SubscriptionGate` uses `[CascadingParameter] Task<AuthenticationState>` to get TenantId from claims, then queries DB directly. It's scoped so each circuit gets its own instance.
+- `MockGraphService` is registered as **Singleton** intentionally — so the animation state persists between the worker's polls.
+- Stripe webhook endpoint uses `AllowAnonymous()` and reads raw body before any middleware — required for Stripe signature verification.
+- Scoped CSS (`.razor.css`) is used throughout — Blazor automatically scopes styles to the component.
 
 ## Next priorities
-1. Get a real Microsoft tenant (M365 Business Premium trial or school Azure credits) and test GraphService
-2. Add a database (Entity Framework + Postgres) for persistence and multi-tenant support
-3. Build the multi-tenant OAuth consent flow so customers can connect their own tenant
-4. Stripe integration for subscriptions
+1. Microsoft OAuth tenant connect flow — the core onboarding step
+2. Multi-tenant worker — loop over all tenants in DB, poll each one's Graph API
+3. Get a real test tenant and run GraphService against it
+4. Email notifications
 5. Deploy to Azure App Service
