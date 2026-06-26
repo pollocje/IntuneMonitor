@@ -1,0 +1,82 @@
+@page "/"
+@using IntuneMonitor.Models
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NavigationManager Nav
+
+<h2>Intune Enrollment Monitor</h2>
+
+@if (devices is null)
+{
+    <p>Connecting to monitor...</p>
+}
+else
+{
+    <p>Showing @devices.Count device(s) enrolled in the last 24 hours. Refreshes automatically.</p>
+
+    <table style="width:100%; border-collapse:collapse;">
+        <thead>
+            <tr style="background:#f0f0f0; text-align:left;">
+                <th style="padding:8px;">Device</th>
+                <th style="padding:8px;">User</th>
+                <th style="padding:8px;">Enrolled</th>
+                <th style="padding:8px;">Last Sync</th>
+                <th style="padding:8px;">Apps</th>
+                <th style="padding:8px;">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var d in devices)
+        {
+            <tr style="border-bottom:1px solid #ddd;">
+                <td style="padding:8px;">@d.DeviceName</td>
+                <td style="padding:8px;">@d.UserPrincipalName</td>
+                <td style="padding:8px;">@d.EnrolledDateTime.ToLocalTime().ToString("g")</td>
+                <td style="padding:8px;">@d.LastSyncDateTime?.ToLocalTime().ToString("g")</td>
+                <td style="padding:8px;">@d.InstalledApps / @d.TotalRequiredApps</td>
+                <td style="padding:8px; font-weight:bold; color:@(d.IsFullyEnrolled ? "green" : "orange")">
+                    @d.StatusLabel
+                </td>
+            </tr>
+            @if (!d.IsFullyEnrolled)
+            {
+                <tr>
+                    <td colspan="6" style="padding:4px 8px 12px 24px;">
+                        @foreach (var app in d.AppStatuses)
+                        {
+                            <span style="margin-right:12px; color:@(app.IsInstalled ? "green" : "#999")">
+                                @(app.IsInstalled ? "✓" : "○") @app.AppName
+                            </span>
+                        }
+                    </td>
+                </tr>
+            }
+        }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<DeviceEnrollment>? devices;
+    private HubConnection? hub;
+
+    protected override async Task OnInitializedAsync()
+    {
+        hub = new HubConnectionBuilder()
+            .WithUrl(Nav.ToAbsoluteUri("/enrollmenthub"))
+            .Build();
+
+        hub.On<List<DeviceEnrollment>>("DevicesUpdated", updated =>
+        {
+            devices = updated;
+            InvokeAsync(StateHasChanged);
+        });
+
+        await hub.StartAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hub is not null)
+            await hub.DisposeAsync();
+    }
+}

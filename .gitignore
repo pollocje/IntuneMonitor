@@ -1,0 +1,15 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.log
+
+## Secrets — never commit these
+appsettings.Development.json
+secrets.json
+
+## OS
+.DS_Store
+Thumbs.db
