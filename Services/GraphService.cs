@@ -1,4 +1,3 @@
-using Azure.Identity;
 using IntuneMonitor.Models;
 using Microsoft.Graph;
 
@@ -8,14 +7,9 @@ public class GraphService : IGraphService
 {
     private readonly GraphServiceClient _client;
 
-    public GraphService(IConfiguration config)
+    public GraphService(GraphServiceClient client)
     {
-        var tenantId     = config["AzureAd:TenantId"]     ?? throw new InvalidOperationException("AzureAd:TenantId not configured.");
-        var clientId     = config["AzureAd:ClientId"]     ?? throw new InvalidOperationException("AzureAd:ClientId not configured.");
-        var clientSecret = config["AzureAd:ClientSecret"] ?? throw new InvalidOperationException("AzureAd:ClientSecret not configured.");
-
-        var credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
-        _client = new GraphServiceClient(credential);
+        _client = client;
     }
 
     public async Task<List<DeviceEnrollment>> GetRecentEnrollmentsAsync(int hoursBack = 24)
