@@ -10,20 +10,26 @@ IntuneMonitor fixes that. It watches your Intune enrollments in real time, notif
 
 ## Features
 
-- **Live enrollment dashboard** — see every device currently enrolling with per-app install progress bars
-- **Real-time updates** — dashboard refreshes automatically via SignalR, no page reloads
-- **Teams notifications** — Adaptive Card fired to your Teams channel the moment a device is ready
-- **Stuck/failed app detection** — automatic warning banner when apps fail to install
-- **Force Sync** — remotely trigger an immediate Intune sync on any device, no RMM needed
-- **Restart IME Service** — remotely restart the IntuneManagementExtension Windows service via Proactive Remediation, without touching the device
-- **Device detail view** — drill into any device for full app status, enrollment timeline, and actions
-- **Settings page** — configure Teams webhook and notification email from inside the app
-- **Dashboard nav** — sticky nav with user email, settings link, sign out
-- **Microsoft tenant connect** — one-click admin consent flow; we request only what's needed and explain every permission before you click
-- **Auto-setup IME remediation** — the Restart IME script is created automatically in your tenant during onboarding (requires Intune Plan 2 / M365 E3+)
-- **User accounts** — sign up, log in, 14-day free trial, cookie-based auth
-- **Stripe subscriptions** — $10/month, full checkout and billing lifecycle handled automatically
-- **Privacy policy + Terms of Service** — real legal pages at `/privacy` and `/terms`
+**Monitoring**
+- Live dashboard — per-device app install progress bars, updates in real time via SignalR
+- Enrollment history — completed devices, time-to-ready stats (avg, fastest, slowest)
+- Stuck/failed app detection with automatic warning banner on the device detail page
+
+**Remote Actions** *(no RMM or BeyondTrust needed)*
+- Force Sync — trigger an immediate Intune sync on any device
+- Restart IME Service — restart IntuneManagementExtension via Proactive Remediation (requires Intune Plan 2 / M365 E3+)
+
+**Notifications**
+- Teams Adaptive Card fired the moment a device is ready
+- Notification email (configurable per tenant in Settings)
+
+**Tenant Setup**
+- One-click Microsoft tenant connect via admin consent — every permission explained before you click
+- IME remediation script auto-created in your tenant during onboarding
+
+**Account & Billing**
+- Sign up, login, 14-day free trial — no credit card required
+- $10/month Stripe subscription with full checkout and billing lifecycle
 
 ---
 
@@ -152,6 +158,7 @@ IntuneMonitor/
 │   ├── ConnectTenant.razor    # Microsoft OAuth connect UI (/connect-tenant)
 │   ├── ConnectCallback.cshtml # OAuth callback handler (/connect-callback)
 │   ├── Dashboard.razor        # Live enrollment dashboard (/dashboard)
+│   ├── History.razor          # Completed enrollment history + stats (/history)
 │   ├── DeviceDetail.razor     # Per-device detail + Force Sync / Restart IME (/device/{id})
 │   ├── Settings.razor         # Notification config, subscription status (/settings)
 │   ├── Account/
@@ -201,6 +208,7 @@ IntuneMonitor/
 - [x] Microsoft OAuth tenant connect flow — admin consent, permission disclosure page
 - [x] Auto-create IME remediation script during tenant onboarding
 - [x] Privacy policy + Terms of Service pages
+- [x] Enrollment history page with time-to-ready stats
 - [ ] Multi-tenant worker (poll all connected tenants)
 - [ ] Email notifications
 - [ ] Azure deployment

@@ -36,7 +36,7 @@ Full working skeleton running against animated mock data. All major SaaS infrast
 - `TenantOnboardingService` — called after admin consent. Creates `DeviceHealthScript` (Proactive Remediation) in the customer's tenant using our client credentials scoped to their TenantId. Sets `Tenant.RemediationScriptId`. Requires Intune Plan 2 / M365 E3+; failure is non-fatal.
 
 **Workers**
-- `EnrollmentMonitorWorker` — polls every 10s, pushes to SignalR hub, fires notifications. Tracks notified devices in `HashSet` (resets on restart).
+- `EnrollmentMonitorWorker` — polls every 10s, pushes to SignalR hub, fires notifications, saves `EnrollmentRecord` to DB when a device becomes ready. Uses `IServiceScopeFactory` to resolve scoped `AppDbContext`. DB save is best-effort (silently skips if DB unavailable or no tenant exists — mock mode). Tracks notified devices in `HashSet` (resets on restart); also checks DB to skip duplicates across restarts.
 
 **Data**
 - `Tenant` — MicrosoftTenantId, StripeCustomerId, StripeSubscriptionId, SubscriptionStatus, TrialEndsAt, TeamsWebhookUrl, NotificationEmail, **RemediationScriptId** (set during onboarding when IME remediation script is created)
@@ -50,6 +50,7 @@ Full working skeleton running against animated mock data. All major SaaS infrast
 - `ConnectTenant.razor` — `/connect-tenant`, `[Authorize]`, `@layout DashboardLayout`. Shows list of permissions being requested, builds the Microsoft admin consent URL (`/common/adminconsent`) with our ClientId and the user's DB tenant GUID as the `state` parameter. Detects if already connected and shows success/error query params.
 - `ConnectCallback.cshtml.cs` — `/connect-callback`, `[Authorize]` Razor Page GET handler. Validates `admin_consent=True`, cross-checks `state` against the logged-in user's TenantId claim, saves `MicrosoftTenantId` to DB, calls `TenantOnboardingService.SetupTenantAsync`. IME script creation failure is non-fatal (logged, tenant still connected).
 - `Dashboard.razor` — `/dashboard`, `[Authorize]`, `@layout DashboardLayout`, wrapped in `SubscriptionGate`
+- `History.razor` — `/history`, `[Authorize]`, `@layout DashboardLayout`. Queries `EnrollmentRecords` for the user's tenant (last 90 days, `ReadyAt` set), shows 4 stat cards (count, avg/fastest/slowest time to ready), and a table with color-coded duration pills (green < 25 min, yellow < 45 min, red otherwise). Falls back to hardcoded demo rows if DB is empty or unavailable.
 - `DeviceDetail.razor` — `/device/{id}`, `[Authorize]`, `@layout DashboardLayout`
   - Shows "Stuck" badge and yellow warning banner when any app has `InstallState == "failed"`
   - **Force Sync** button — always shown for non-ready devices, calls `SyncDeviceAsync`
