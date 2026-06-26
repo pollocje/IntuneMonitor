@@ -1,0 +1,80 @@
+@page "/device/{DeviceId}"
+@using IntuneMonitor.Models
+@using IntuneMonitor.Services
+@inject IGraphService GraphService
+@inject NavigationManager Nav
+
+<a href="/" style="font-size:0.9rem;">← Back to Dashboard</a>
+
+@if (device is null)
+{
+    <p>Loading device...</p>
+}
+else
+{
+    <div class="device-header">
+        <div>
+            <h2>@device.DeviceName</h2>
+            <p class="subtitle">@device.UserPrincipalName</p>
+        </div>
+        <div class="status-badge @(device.IsFullyEnrolled ? "ready" : "installing")">
+            @device.StatusLabel
+        </div>
+    </div>
+
+    <div class="device-meta">
+        <div class="meta-item">
+            <span class="meta-label">Enrolled</span>
+            <span>@device.EnrolledDateTime.ToLocalTime().ToString("f")</span>
+        </div>
+        <div class="meta-item">
+            <span class="meta-label">Last Sync</span>
+            <span>@device.LastSyncDateTime?.ToLocalTime().ToString("f")</span>
+        </div>
+        @if (device.TimeToReady.HasValue)
+        {
+            <div class="meta-item">
+                <span class="meta-label">Time to Ready</span>
+                <span>@((int)device.TimeToReady.Value.TotalMinutes) minutes</span>
+            </div>
+        }
+    </div>
+
+    <h3>App Installation Status</h3>
+    <table class="app-table">
+        <thead>
+            <tr>
+                <th>App</th>
+                <th>State</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var app in device.AppStatuses)
+        {
+            <tr>
+                <td>@app.AppName</td>
+                <td>@app.InstallState</td>
+                <td class="@(app.IsInstalled ? "installed" : "pending")">
+                    @(app.IsInstalled ? "✓ Installed" : "○ Pending")
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+@code {
+    [Parameter] public string DeviceId { get; set; } = string.Empty;
+
+    private DeviceEnrollment? device;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var all = await GraphService.GetRecentEnrollmentsAsync();
+        device = all.FirstOrDefault(d => d.DeviceId == DeviceId);
+
+        if (device is null)
+            Nav.NavigateTo("/");
+    }
+}

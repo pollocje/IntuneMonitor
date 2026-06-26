@@ -1,5 +1,6 @@
 @page "/"
 @using IntuneMonitor.Models
+@using IntuneMonitor.Shared
 @using Microsoft.AspNetCore.SignalR.Client
 @inject NavigationManager Nav
 
@@ -11,45 +12,45 @@
 }
 else
 {
-    <p>Showing @devices.Count device(s) enrolled in the last 24 hours. Refreshes automatically.</p>
+    <SummaryCards Devices="devices" />
 
-    <table style="width:100%; border-collapse:collapse;">
+    <table class="enrollment-table">
         <thead>
-            <tr style="background:#f0f0f0; text-align:left;">
-                <th style="padding:8px;">Device</th>
-                <th style="padding:8px;">User</th>
-                <th style="padding:8px;">Enrolled</th>
-                <th style="padding:8px;">Last Sync</th>
-                <th style="padding:8px;">Apps</th>
-                <th style="padding:8px;">Status</th>
+            <tr>
+                <th>Device</th>
+                <th>User</th>
+                <th>Enrolled</th>
+                <th>Last Sync</th>
+                <th>Apps</th>
+                <th>Status</th>
+                <th></th>
             </tr>
         </thead>
         <tbody>
         @foreach (var d in devices)
         {
-            <tr style="border-bottom:1px solid #ddd;">
-                <td style="padding:8px;">@d.DeviceName</td>
-                <td style="padding:8px;">@d.UserPrincipalName</td>
-                <td style="padding:8px;">@d.EnrolledDateTime.ToLocalTime().ToString("g")</td>
-                <td style="padding:8px;">@d.LastSyncDateTime?.ToLocalTime().ToString("g")</td>
-                <td style="padding:8px;">@d.InstalledApps / @d.TotalRequiredApps</td>
-                <td style="padding:8px; font-weight:bold; color:@(d.IsFullyEnrolled ? "green" : "orange")">
+            <tr>
+                <td>@d.DeviceName</td>
+                <td>@d.UserPrincipalName</td>
+                <td>@d.EnrolledDateTime.ToLocalTime().ToString("g")</td>
+                <td>@d.LastSyncDateTime?.ToLocalTime().ToString("g")</td>
+                <td>
+                    <div class="app-progress">
+                        <span>@d.InstalledApps / @d.TotalRequiredApps</span>
+                        <div class="progress-bar">
+                            <div class="progress-fill @(d.IsFullyEnrolled ? "ready" : "installing")"
+                                 style="width: @(d.TotalRequiredApps > 0 ? (d.InstalledApps * 100 / d.TotalRequiredApps) : 0)%">
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td class="status @(d.IsFullyEnrolled ? "ready" : "installing")">
                     @d.StatusLabel
                 </td>
+                <td>
+                    <a href="/device/@d.DeviceId">Details</a>
+                </td>
             </tr>
-            @if (!d.IsFullyEnrolled)
-            {
-                <tr>
-                    <td colspan="6" style="padding:4px 8px 12px 24px;">
-                        @foreach (var app in d.AppStatuses)
-                        {
-                            <span style="margin-right:12px; color:@(app.IsInstalled ? "green" : "#999")">
-                                @(app.IsInstalled ? "✓" : "○") @app.AppName
-                            </span>
-                        }
-                    </td>
-                </tr>
-            }
         }
         </tbody>
     </table>

@@ -1,0 +1,36 @@
+.summary-cards {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.card {
+    flex: 1;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    background: #f8f9fa;
+    border-left: 4px solid #ccc;
+}
+
+.card-number {
+    font-size: 2rem;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.card-label {
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.card.total   { border-left-color: #6c757d; }
+.card.waiting { border-left-color: #adb5bd; }
+.card.installing { border-left-color: #fd7e14; }
+.card.ready   { border-left-color: #28a745; }
+
+.card.ready .card-number   { color: #28a745; }
+.card.installing .card-number { color: #fd7e14; }

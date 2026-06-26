@@ -1,0 +1,70 @@
+.device-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 16px 0 24px;
+}
+
+.device-header h2 {
+    margin: 0;
+}
+
+.subtitle {
+    color: #666;
+    margin: 4px 0 0;
+}
+
+.status-badge {
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.status-badge.ready      { background: #d4edda; color: #155724; }
+.status-badge.installing { background: #fff3cd; color: #856404; }
+
+.device-meta {
+    display: flex;
+    gap: 32px;
+    background: #f8f9fa;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+}
+
+.meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.meta-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #888;
+}
+
+.app-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.app-table th {
+    background: #f0f0f0;
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #555;
+}
+
+.app-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #eee;
+}
+
+.installed { color: #28a745; font-weight: 600; }
+.pending   { color: #adb5bd; }

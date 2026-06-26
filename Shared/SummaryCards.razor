@@ -1,0 +1,24 @@
+@using IntuneMonitor.Models
+
+<div class="summary-cards">
+    <div class="card total">
+        <div class="card-number">@Devices.Count</div>
+        <div class="card-label">Total</div>
+    </div>
+    <div class="card waiting">
+        <div class="card-number">@Devices.Count(d => d.InstalledApps == 0)</div>
+        <div class="card-label">Waiting</div>
+    </div>
+    <div class="card installing">
+        <div class="card-number">@Devices.Count(d => d.InstalledApps > 0 && !d.IsFullyEnrolled)</div>
+        <div class="card-label">Installing</div>
+    </div>
+    <div class="card ready">
+        <div class="card-number">@Devices.Count(d => d.IsFullyEnrolled)</div>
+        <div class="card-label">Ready</div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<DeviceEnrollment> Devices { get; set; } = new();
+}
