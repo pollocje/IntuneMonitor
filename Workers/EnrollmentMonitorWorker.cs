@@ -8,12 +8,17 @@ public class EnrollmentMonitorWorker : BackgroundService
 {
     private readonly IGraphService _graphService;
     private readonly IHubContext<EnrollmentHub> _hub;
+    private readonly INotificationService _notifications;
     private readonly HashSet<string> _notifiedDevices = new();
 
-    public EnrollmentMonitorWorker(IGraphService graphService, IHubContext<EnrollmentHub> hub)
+    public EnrollmentMonitorWorker(
+        IGraphService graphService,
+        IHubContext<EnrollmentHub> hub,
+        INotificationService notifications)
     {
         _graphService = graphService;
         _hub = hub;
+        _notifications = notifications;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -27,7 +32,7 @@ public class EnrollmentMonitorWorker : BackgroundService
             foreach (var device in devices.Where(d => d.IsFullyEnrolled))
             {
                 if (_notifiedDevices.Add(device.DeviceId))
-                    Console.WriteLine($"[NOTIFY] {device.DeviceName} is ready — {device.UserPrincipalName}");
+                    await _notifications.SendDeviceReadyAsync(device);
             }
 
             await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);

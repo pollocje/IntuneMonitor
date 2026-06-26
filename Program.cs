@@ -8,6 +8,7 @@ builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<IGraphService, MockGraphService>();
+builder.Services.AddHttpClient<INotificationService, TeamsNotificationService>();
 builder.Services.AddHostedService<EnrollmentMonitorWorker>();
 
 var app = builder.Build();
