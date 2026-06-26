@@ -1,0 +1,57 @@
+@page
+@model IntuneMonitor.Pages.Account.LoginModel
+@{ Layout = null; }
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign In — IntuneMonitor</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f7ff; display: flex; flex-direction: column; min-height: 100vh; }
+        .nav { background: #fff; border-bottom: 1px solid #eee; padding: 16px 24px; }
+        .logo { font-weight: 700; font-size: 1.2rem; color: #0066cc; text-decoration: none; }
+        .card { background: #fff; border-radius: 12px; padding: 40px; width: 100%; max-width: 420px; margin: auto; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+        h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 6px; }
+        .subtitle { color: #666; font-size: 0.9rem; margin-bottom: 28px; }
+        label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: #333; }
+        input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.95rem; margin-bottom: 18px; }
+        input:focus { outline: none; border-color: #0066cc; box-shadow: 0 0 0 3px rgba(0,102,204,0.1); }
+        .btn { width: 100%; padding: 12px; background: #0066cc; color: #fff; border: none; border-radius: 6px; font-size: 1rem; font-weight: 600; cursor: pointer; }
+        .btn:hover { background: #0052a3; }
+        .error { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 10px 14px; border-radius: 6px; font-size: 0.9rem; margin-bottom: 18px; }
+        .footer-link { text-align: center; margin-top: 20px; font-size: 0.9rem; color: #666; }
+        .footer-link a { color: #0066cc; text-decoration: none; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <a class="logo" href="/">IntuneMonitor</a>
+    </nav>
+
+    <div class="card">
+        <h1>Welcome back</h1>
+        <p class="subtitle">Sign in to your account</p>
+
+        @if (Model.Error is not null)
+        {
+            <div class="error">@Model.Error</div>
+        }
+
+        <form method="post">
+            @Html.AntiForgeryToken()
+            <label for="email">Email</label>
+            <input id="email" name="Email" type="email" autocomplete="email" required />
+
+            <label for="password">Password</label>
+            <input id="password" name="Password" type="password" autocomplete="current-password" required />
+
+            <button type="submit" class="btn">Sign In</button>
+        </form>
+
+        <p class="footer-link">Don't have an account? <a href="/account/signup">Start free trial</a></p>
+    </div>
+</body>
+</html>
