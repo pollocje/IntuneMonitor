@@ -52,6 +52,21 @@ public class GraphService : IGraphService
         return devices;
     }
 
+    public async Task SyncDeviceAsync(string deviceId)
+    {
+        await _client.DeviceManagement.ManagedDevices[deviceId].SyncDevice.PostAsync();
+    }
+
+    public async Task RestartImeServiceAsync(string deviceId, string scriptPolicyId)
+    {
+        await _client.DeviceManagement.ManagedDevices[deviceId]
+            .InitiateOnDemandProactiveRemediation
+            .PostAsync(new Microsoft.Graph.DeviceManagement.ManagedDevices.Item.InitiateOnDemandProactiveRemediation.InitiateOnDemandProactiveRemediationPostRequestBody
+            {
+                ScriptPolicyId = scriptPolicyId
+            });
+    }
+
     private async Task<List<AppInstallStatus>> GetAppStatusesAsync(string deviceId)
     {
         var apps = await _client.DeviceAppManagement.MobileApps.GetAsync();

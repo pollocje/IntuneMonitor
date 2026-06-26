@@ -52,6 +52,28 @@ public class MockGraphService : IGraphService
         return Task.FromResult(_devices.ToList());
     }
 
+    public Task SyncDeviceAsync(string deviceId)
+    {
+        var device = _devices.FirstOrDefault(d => d.DeviceId == deviceId);
+        if (device is not null)
+        {
+            // Reset failed apps back to notInstalled so they'll retry
+            foreach (var app in device.AppStatuses.Where(a => a.IsFailed))
+            {
+                app.InstallState = "notInstalled";
+                app.IsInstalled = false;
+            }
+            device.LastSyncDateTime = DateTime.UtcNow;
+        }
+        return Task.CompletedTask;
+    }
+
+    public Task RestartImeServiceAsync(string deviceId, string scriptPolicyId)
+    {
+        // In mock mode, same behaviour as sync — resets failed apps and updates sync time
+        return SyncDeviceAsync(deviceId);
+    }
+
     private static List<DeviceEnrollment> CreateInitialDevices() => new()
     {
         new()
@@ -96,6 +118,21 @@ public class MockGraphService : IGraphService
                 new() { AppId = "1", AppName = "Microsoft 365 Apps", IsInstalled = false, InstallState = "notInstalled" },
                 new() { AppId = "2", AppName = "Company VPN",         IsInstalled = false, InstallState = "notInstalled" },
                 new() { AppId = "3", AppName = "CrowdStrike Falcon",  IsInstalled = false, InstallState = "notInstalled" },
+                new() { AppId = "4", AppName = "Cisco Webex",         IsInstalled = false, InstallState = "notInstalled" },
+            }
+        },
+        new()
+        {
+            DeviceId = "device-004",
+            DeviceName = "LAPTOP-STUCK99",
+            UserPrincipalName = "stuck.user@company.com",
+            EnrolledDateTime = DateTime.UtcNow.AddHours(-3),
+            LastSyncDateTime = DateTime.UtcNow.AddHours(-2),
+            AppStatuses = new()
+            {
+                new() { AppId = "1", AppName = "Microsoft 365 Apps", IsInstalled = true,  InstallState = "installed" },
+                new() { AppId = "2", AppName = "Company VPN",         IsInstalled = false, InstallState = "failed" },
+                new() { AppId = "3", AppName = "CrowdStrike Falcon",  IsInstalled = false, InstallState = "failed" },
                 new() { AppId = "4", AppName = "Cisco Webex",         IsInstalled = false, InstallState = "notInstalled" },
             }
         }

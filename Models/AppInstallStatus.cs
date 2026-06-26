@@ -6,4 +6,5 @@ public class AppInstallStatus
     public string AppName { get; set; } = string.Empty;
     public bool IsInstalled { get; set; }
     public string InstallState { get; set; } = string.Empty;
+    public bool IsFailed => InstallState == "failed";
 }

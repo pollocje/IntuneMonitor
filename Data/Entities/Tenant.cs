@@ -21,6 +21,9 @@ public class Tenant
     public string? TeamsWebhookUrl { get; set; }
     public string? NotificationEmail { get; set; }
 
+    // Set during onboarding when we create the "Restart IME Service" remediation script in their tenant
+    public string? RemediationScriptId { get; set; }
+
     // Navigation
     public List<AppUser> Users { get; set; } = new();
     public List<EnrollmentRecord> EnrollmentRecords { get; set; } = new();

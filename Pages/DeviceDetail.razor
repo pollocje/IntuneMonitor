@@ -1,12 +1,16 @@
 @page "/device/{DeviceId}"
 @using IntuneMonitor.Models
 @using IntuneMonitor.Services
+@using IntuneMonitor.Data
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
 @layout DashboardLayout
 @attribute [Authorize]
 @inject IGraphService GraphService
+@inject AppDbContext Db
 @inject NavigationManager Nav
 
-<a href="/dashboard" style="font-size:0.9rem;">← Back to Dashboard</a>
+<a href="/dashboard" class="back-link">← Back to Dashboard</a>
 
 @if (device is null)
 {
@@ -19,8 +23,8 @@ else
             <h2>@device.DeviceName</h2>
             <p class="subtitle">@device.UserPrincipalName</p>
         </div>
-        <div class="status-badge @(device.IsFullyEnrolled ? "ready" : "installing")">
-            @device.StatusLabel
+        <div class="status-badge @(device.IsFullyEnrolled ? "ready" : HasFailedApps ? "failed" : "installing")">
+            @(device.IsFullyEnrolled ? "Ready" : HasFailedApps ? "Stuck" : "Installing")
         </div>
     </div>
 
@@ -42,6 +46,66 @@ else
         }
     </div>
 
+    @if (HasFailedApps)
+    {
+        <div class="stuck-banner">
+            <div class="stuck-banner-text">
+                <strong>⚠️ Apps are failing to install.</strong>
+                Try forcing a sync first. If that doesn't help, restart the Intune Management Extension service.
+            </div>
+        </div>
+    }
+
+    <!-- ACTIONS -->
+    @if (!device.IsFullyEnrolled)
+    {
+        <div class="actions-panel">
+            <h3>Device Actions</h3>
+            <div class="action-buttons">
+
+                <div class="action-card">
+                    <div class="action-info">
+                        <strong>Force Sync</strong>
+                        <p>Wakes up the Intune Management Extension and forces it to re-check all pending app assignments immediately.</p>
+                    </div>
+                    <button class="btn btn-action" @onclick="ForceSyncAsync" disabled="@_acting">
+                        @(_actionMessage == "sync" ? "Sync Requested ✓" : "Force Sync")
+                    </button>
+                </div>
+
+                @if (_remediationScriptId is not null)
+                {
+                    <div class="action-card">
+                        <div class="action-info">
+                            <strong>Restart IME Service</strong>
+                            <p>Restarts the IntuneManagementExtension Windows service on this device. Use this when apps are stuck and a sync hasn't helped.</p>
+                        </div>
+                        <button class="btn btn-action btn-warning" @onclick="RestartImeAsync" disabled="@_acting">
+                            @(_actionMessage == "ime" ? "Restart Sent ✓" : "Restart IME Service")
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <div class="action-card action-card-locked">
+                        <div class="action-info">
+                            <strong>Restart IME Service</strong>
+                            <p>Requires completing tenant onboarding to create the remediation script in your Intune. <a href="/settings">Finish setup →</a></p>
+                        </div>
+                        <button class="btn btn-action" disabled>Not Configured</button>
+                    </div>
+                }
+
+            </div>
+
+            @if (_error is not null)
+            {
+                <div class="action-error">⚠️ @_error</div>
+            }
+        </div>
+    }
+
+    <!-- APP TABLE -->
     <h3>App Installation Status</h3>
     <table class="app-table">
         <thead>
@@ -54,11 +118,13 @@ else
         <tbody>
         @foreach (var app in device.AppStatuses)
         {
-            <tr>
+            <tr class="@(app.IsFailed ? "row-failed" : "")">
                 <td>@app.AppName</td>
                 <td>@app.InstallState</td>
-                <td class="@(app.IsInstalled ? "installed" : "pending")">
-                    @(app.IsInstalled ? "✓ Installed" : "○ Pending")
+                <td class="@(app.IsInstalled ? "state-installed" : app.IsFailed ? "state-failed" : "state-pending")">
+                    @if (app.IsInstalled)  { <span>✓ Installed</span> }
+                    else if (app.IsFailed) { <span>✕ Failed</span>    }
+                    else                   { <span>○ Pending</span>   }
                 </td>
             </tr>
         }
@@ -68,8 +134,15 @@ else
 
 @code {
     [Parameter] public string DeviceId { get; set; } = string.Empty;
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
 
     private DeviceEnrollment? device;
+    private string? _remediationScriptId;
+    private bool _acting = false;
+    private string? _actionMessage;
+    private string? _error;
+
+    private bool HasFailedApps => device?.AppStatuses.Any(a => a.IsFailed) ?? false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -77,6 +150,59 @@ else
         device = all.FirstOrDefault(d => d.DeviceId == DeviceId);
 
         if (device is null)
-            Nav.NavigateTo("/");
+        {
+            Nav.NavigateTo("/dashboard");
+            return;
+        }
+
+        if (AuthState is not null)
+        {
+            var auth = await AuthState;
+            var tenantId = auth.User.FindFirstValue("TenantId");
+            if (Guid.TryParse(tenantId, out var tid))
+            {
+                var tenant = await Db.Tenants.FindAsync(tid);
+                _remediationScriptId = tenant?.RemediationScriptId;
+            }
+        }
+    }
+
+    private async Task ForceSyncAsync()
+    {
+        _acting = true;
+        _error = null;
+        try
+        {
+            await GraphService.SyncDeviceAsync(DeviceId);
+            _actionMessage = "sync";
+        }
+        catch (Exception ex)
+        {
+            _error = $"Sync failed: {ex.Message}";
+        }
+        finally
+        {
+            _acting = false;
+        }
+    }
+
+    private async Task RestartImeAsync()
+    {
+        if (_remediationScriptId is null) return;
+        _acting = true;
+        _error = null;
+        try
+        {
+            await GraphService.RestartImeServiceAsync(DeviceId, _remediationScriptId);
+            _actionMessage = "ime";
+        }
+        catch (Exception ex)
+        {
+            _error = $"Restart failed: {ex.Message}";
+        }
+        finally
+        {
+            _acting = false;
+        }
     }
 }
