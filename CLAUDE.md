@@ -8,6 +8,8 @@ Target customers: IT admins at SMBs, MSPs who reprovision devices regularly. $10
 ## Who is building this
 Solo project by a final-year CS student doing an IT co-op at a provincial government (Canada). Primary language is C#. Building this as a side project to eventually market and sell as a SaaS. Personal email: jeffrey.pollock123@gmail.com (used for admin access and git commits).
 
+Development happens on two machines: **work computer** (primary, at the co-op) and **home computer**. Both have the repo cloned.
+
 ## Tech stack
 - **ASP.NET Core** + **Blazor Server** — backend and frontend (no JavaScript framework)
 - **SignalR** — real-time dashboard updates pushed to browser, scoped to tenant groups
@@ -80,12 +82,14 @@ Solo project by a final-year CS student doing an IT co-op at a provincial govern
 ---
 
 ## Home computer checklist
-Everything needed to go from code → actually running with real tenants:
+Everything needed to go from code → actually running with real tenants.
+
+**Current home machine status:** .NET 10 SDK and EF CLI tools are installed, repo is cloned. PostgreSQL is NOT set up locally — use Neon.tech (free, cloud-hosted Postgres, no local install needed). `appsettings.json` credentials are blank and need filling in.
 
 ### 1. Install prerequisites
-- [.NET 8 SDK](https://dotnet.microsoft.com/download)
-- [PostgreSQL](https://www.postgresql.org/download/) (or use a free cloud DB — Neon.tech is easy)
-- [dotnet-ef tool](https://learn.microsoft.com/en-us/ef/core/cli/dotnet): `dotnet tool install --global dotnet-ef`
+- [.NET 8 SDK](https://dotnet.microsoft.com/download) ✓ (10 installed)
+- ~~PostgreSQL~~ — use [Neon.tech](https://neon.tech) instead (free cloud Postgres, no local install)
+- [dotnet-ef tool](https://learn.microsoft.com/en-us/ef/core/cli/dotnet): `dotnet tool install --global dotnet-ef` ✓
 
 ### 2. Clone and restore
 ```bash
