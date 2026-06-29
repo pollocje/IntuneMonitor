@@ -1,0 +1,185 @@
+h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 28px;
+}
+
+/* Add row */
+.add-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 28px;
+}
+
+.add-row input {
+    flex: 1;
+    max-width: 360px;
+    padding: 9px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.add-row input:focus {
+    outline: none;
+    border-color: #0066cc;
+    box-shadow: 0 0 0 3px rgba(0,102,204,0.1);
+}
+
+/* Empty state */
+.empty-state {
+    background: #fff;
+    border: 1px dashed #d1d5db;
+    border-radius: 10px;
+    padding: 48px;
+    text-align: center;
+    color: #888;
+    font-size: 0.95rem;
+}
+
+/* Card grid */
+.device-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.device-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.device-card.ready    { border-left: 4px solid #28a745; }
+.device-card.installing { border-left: 4px solid #fd7e14; }
+.device-card.pending  { border-left: 4px solid #d1d5db; }
+
+/* Card header */
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.device-name {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #1a1a2e;
+    word-break: break-all;
+}
+
+/* Status badges */
+.status-badge {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.status-badge.ready      { background: #d1fae5; color: #065f46; }
+.status-badge.installing { background: #fff3cd; color: #856404; }
+.status-badge.pending    { background: #f3f4f6; color: #6b7280; }
+
+/* Card content */
+.card-user {
+    font-size: 0.82rem;
+    color: #666;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.card-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.progress-text {
+    font-size: 0.82rem;
+    color: #555;
+}
+
+.progress-bar {
+    height: 6px;
+    background: #e9ecef;
+    border-radius: 3px;
+}
+
+.progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.6s ease;
+}
+
+.progress-fill.ready      { background: #28a745; }
+.progress-fill.installing { background: #fd7e14; }
+
+.card-time {
+    font-size: 0.82rem;
+    color: #28a745;
+    font-weight: 600;
+}
+
+.card-pending-msg {
+    font-size: 0.85rem;
+    color: #888;
+    font-style: italic;
+}
+
+.card-added {
+    font-size: 0.78rem;
+    color: #aaa;
+}
+
+/* Card actions */
+.card-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 4px;
+    flex-wrap: wrap;
+}
+
+/* Buttons */
+.btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-primary   { background: #0066cc; color: #fff; }
+.btn-primary:hover   { background: #0052a3; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-secondary { background: #f0f0f0; color: #333; }
+.btn-secondary:hover { background: #e0e0e0; }
+
+.btn-sm { padding: 5px 12px; font-size: 0.8rem; }
+
+.btn-remove {
+    background: none;
+    border: 1px solid #28a745;
+    color: #28a745;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-remove:hover {
+    background: #d1fae5;
+}

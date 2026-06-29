@@ -1,0 +1,70 @@
+h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 28px;
+}
+
+.no-results {
+    color: #888;
+    font-size: 0.95rem;
+}
+
+.search-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.search-table th {
+    background: #f0f0f0;
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #555;
+}
+
+.search-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #eee;
+    vertical-align: middle;
+}
+
+.search-table tr:hover td {
+    background: #fafafa;
+}
+
+.device-name {
+    font-weight: 600;
+}
+
+.app-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.85rem;
+}
+
+.progress-bar {
+    height: 4px;
+    background: #e9ecef;
+    border-radius: 2px;
+    width: 80px;
+}
+
+.progress-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.6s ease;
+}
+
+.progress-fill.ready      { background: #28a745; }
+.progress-fill.installing { background: #fd7e14; }
+
+.status {
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.status.ready      { color: #28a745; }
+.status.installing { color: #fd7e14; }

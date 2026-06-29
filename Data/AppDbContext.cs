@@ -10,6 +10,7 @@ public class AppDbContext : DbContext
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<AppUser> Users => Set<AppUser>();
     public DbSet<EnrollmentRecord> EnrollmentRecords => Set<EnrollmentRecord>();
+    public DbSet<RefreshListItem> RefreshListItems => Set<RefreshListItem>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -38,6 +39,16 @@ public class AppDbContext : DbContext
             e.HasOne(x => x.Tenant)
              .WithMany(x => x.EnrollmentRecords)
              .HasForeignKey(x => x.TenantId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        model.Entity<RefreshListItem>(r =>
+        {
+            r.HasKey(x => x.Id);
+            r.HasIndex(x => new { x.UserId, x.TenantId });
+            r.HasOne(x => x.User)
+             .WithMany()
+             .HasForeignKey(x => x.UserId)
              .OnDelete(DeleteBehavior.Cascade);
         });
     }

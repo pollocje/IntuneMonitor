@@ -1,0 +1,103 @@
+@page "/search"
+@layout DashboardLayout
+@attribute [Authorize]
+@using System.Security.Claims
+@using IntuneMonitor.Models
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NavigationManager Nav
+@implements IAsyncDisposable
+
+@if (devices is null)
+{
+    <p>Connecting...</p>
+}
+else
+{
+    var results = string.IsNullOrWhiteSpace(Q)
+        ? devices
+        : devices.Where(d =>
+            d.DeviceName.Contains(Q, StringComparison.OrdinalIgnoreCase) ||
+            d.UserPrincipalName.Contains(Q, StringComparison.OrdinalIgnoreCase))
+          .ToList();
+
+    <h2>@(string.IsNullOrWhiteSpace(Q) ? "All Devices" : $"Results for \"{Q}\"")</h2>
+
+    @if (!results.Any())
+    {
+        <p class="no-results">No devices match "@Q".</p>
+    }
+    else
+    {
+        <table class="search-table">
+            <thead>
+                <tr>
+                    <th>Device</th>
+                    <th>User</th>
+                    <th>Enrolled</th>
+                    <th>Apps</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var d in results)
+            {
+                <tr>
+                    <td class="device-name">@d.DeviceName</td>
+                    <td>@d.UserPrincipalName</td>
+                    <td>@d.EnrolledDateTime.ToLocalTime().ToString("g")</td>
+                    <td>
+                        <div class="app-progress">
+                            <span>@d.InstalledApps / @d.TotalRequiredApps</span>
+                            <div class="progress-bar">
+                                <div class="progress-fill @(d.IsFullyEnrolled ? "ready" : "installing")"
+                                     style="width: @(d.TotalRequiredApps > 0 ? (d.InstalledApps * 100 / d.TotalRequiredApps) : 0)%">
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="status @(d.IsFullyEnrolled ? "ready" : "installing")">@d.StatusLabel</td>
+                    <td><a href="/device/@d.DeviceId">Details</a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    [SupplyParameterFromQuery] public string? Q { get; set; }
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private List<DeviceEnrollment>? devices;
+    private HubConnection? hub;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var tenantId = "";
+        if (AuthState is not null)
+        {
+            var auth = await AuthState;
+            tenantId = auth.User.FindFirstValue("TenantId") ?? "";
+        }
+
+        hub = new HubConnectionBuilder()
+            .WithUrl(Nav.ToAbsoluteUri($"/enrollmenthub?tenantId={tenantId}"))
+            .Build();
+
+        hub.On<List<DeviceEnrollment>>("DevicesUpdated", updated =>
+        {
+            devices = updated;
+            InvokeAsync(StateHasChanged);
+        });
+
+        await hub.StartAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hub is not null)
+            await hub.DisposeAsync();
+    }
+}

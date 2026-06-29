@@ -1,0 +1,189 @@
+@page "/refresh-list"
+@layout DashboardLayout
+@attribute [Authorize]
+@using System.Security.Claims
+@using IntuneMonitor.Data
+@using IntuneMonitor.Data.Entities
+@using IntuneMonitor.Models
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext Db
+@inject NavigationManager Nav
+@implements IAsyncDisposable
+
+<h2>Refresh List</h2>
+
+@if (!_loaded)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="add-row">
+        <input type="text"
+               list="device-suggestions"
+               placeholder="Add device name..."
+               @bind="_addInput"
+               @bind:event="oninput"
+               @onkeydown="OnAddKeyDown" />
+        <datalist id="device-suggestions">
+            @foreach (var name in DeviceSuggestions)
+            {
+                <option value="@name" />
+            }
+        </datalist>
+        <button class="btn btn-primary" @onclick="AddDevice" disabled="@string.IsNullOrWhiteSpace(_addInput)">
+            Add to list
+        </button>
+    </div>
+
+    @if (!_items.Any())
+    {
+        <div class="empty-state">
+            <p>Your refresh list is empty. Add a device name above to track its enrollment.</p>
+        </div>
+    }
+    else
+    {
+        <div class="device-grid">
+            @foreach (var item in _items)
+            {
+                var live = GetLiveDevice(item.DeviceName);
+                var stateClass = live?.IsFullyEnrolled == true ? "ready" : live != null ? "installing" : "pending";
+                var statusLabel = live?.IsFullyEnrolled == true ? "Ready" : live != null ? live.StatusLabel : "Pending";
+
+                <div class="device-card @stateClass">
+                    <div class="card-header">
+                        <span class="device-name">@item.DeviceName</span>
+                        <span class="status-badge @stateClass">@statusLabel</span>
+                    </div>
+
+                    @if (live is not null)
+                    {
+                        <div class="card-user">@live.UserPrincipalName</div>
+                        <div class="card-progress">
+                            <span class="progress-text">@live.InstalledApps / @live.TotalRequiredApps apps</span>
+                            <div class="progress-bar">
+                                <div class="progress-fill @stateClass"
+                                     style="width: @(live.TotalRequiredApps > 0 ? (live.InstalledApps * 100 / live.TotalRequiredApps) : 0)%">
+                                </div>
+                            </div>
+                        </div>
+                        @if (live.IsFullyEnrolled && live.TimeToReady.HasValue)
+                        {
+                            <div class="card-time">Ready in @((int)live.TimeToReady.Value.TotalMinutes) min</div>
+                        }
+                        <div class="card-actions">
+                            <a href="/device/@live.DeviceId" class="btn btn-secondary btn-sm">Details</a>
+                            @if (live.IsFullyEnrolled)
+                            {
+                                <button class="btn btn-remove" @onclick="() => RemoveItem(item.Id)">
+                                    Remove from list
+                                </button>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="card-pending-msg">Waiting for enrollment...</div>
+                        <div class="card-added">Added @FormatAdded(item.AddedAt)</div>
+                    }
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private List<RefreshListItem> _items = new();
+    private List<DeviceEnrollment>? _liveDevices;
+    private string _addInput = "";
+    private bool _loaded;
+    private Guid _userId;
+    private Guid _tenantId;
+    private HubConnection? _hub;
+
+    private IEnumerable<string> DeviceSuggestions =>
+        _liveDevices?
+            .Select(d => d.DeviceName)
+            .Where(n => !_items.Any(i => i.DeviceName.Equals(n, StringComparison.OrdinalIgnoreCase)))
+        ?? Enumerable.Empty<string>();
+
+    private DeviceEnrollment? GetLiveDevice(string name) =>
+        _liveDevices?.FirstOrDefault(d => d.DeviceName.Equals(name, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is null) return;
+
+        var auth = await AuthState;
+        _userId   = Guid.Parse(auth.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        _tenantId = Guid.Parse(auth.User.FindFirstValue("TenantId")!);
+
+        _items = await Db.RefreshListItems
+            .Where(r => r.UserId == _userId)
+            .OrderBy(r => r.AddedAt)
+            .ToListAsync();
+
+        _hub = new HubConnectionBuilder()
+            .WithUrl(Nav.ToAbsoluteUri($"/enrollmenthub?tenantId={_tenantId}"))
+            .Build();
+
+        _hub.On<List<DeviceEnrollment>>("DevicesUpdated", updated =>
+        {
+            _liveDevices = updated;
+            InvokeAsync(StateHasChanged);
+        });
+
+        await _hub.StartAsync();
+        _loaded = true;
+    }
+
+    private async Task AddDevice()
+    {
+        var name = _addInput.Trim();
+        if (string.IsNullOrWhiteSpace(name)) return;
+        if (_items.Any(i => i.DeviceName.Equals(name, StringComparison.OrdinalIgnoreCase)))
+        {
+            _addInput = "";
+            return;
+        }
+
+        var item = new RefreshListItem { UserId = _userId, TenantId = _tenantId, DeviceName = name };
+        Db.RefreshListItems.Add(item);
+        await Db.SaveChangesAsync();
+        _items.Add(item);
+        _addInput = "";
+    }
+
+    private async Task OnAddKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await AddDevice();
+    }
+
+    private async Task RemoveItem(Guid id)
+    {
+        var item = _items.FirstOrDefault(i => i.Id == id);
+        if (item is null) return;
+        Db.RefreshListItems.Remove(item);
+        await Db.SaveChangesAsync();
+        _items.Remove(item);
+    }
+
+    private static string FormatAdded(DateTime addedAt)
+    {
+        var elapsed = DateTime.UtcNow - addedAt;
+        if (elapsed.TotalMinutes < 1) return "just now";
+        if (elapsed.TotalHours   < 1) return $"{(int)elapsed.TotalMinutes} min ago";
+        return $"{(int)elapsed.TotalHours} hr ago";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hub is not null)
+            await _hub.DisposeAsync();
+    }
+}

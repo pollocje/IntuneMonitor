@@ -1,14 +1,24 @@
 @inherits LayoutComponentBase
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Nav
 
 <div class="dashboard-shell">
     <nav class="dashboard-nav">
         <div class="nav-left">
             <a href="/" class="logo">IntuneMonitor</a>
         </div>
+        <div class="nav-center">
+            <input type="search"
+                   class="nav-search"
+                   placeholder="Search devices..."
+                   @bind="_searchQuery"
+                   @bind:event="oninput"
+                   @onkeydown="OnSearchKeyDown" />
+        </div>
         <div class="nav-right">
             <a href="/dashboard" class="nav-link">Dashboard</a>
+            <a href="/refresh-list" class="nav-link">Refresh List</a>
             <a href="/history" class="nav-link">History</a>
             <a href="/settings" class="nav-link">Settings</a>
             <AuthorizeView>
@@ -22,3 +32,16 @@
         @Body
     </main>
 </div>
+
+@code {
+    private string _searchQuery = "";
+
+    private void OnSearchKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_searchQuery))
+        {
+            Nav.NavigateTo($"/search?q={Uri.EscapeDataString(_searchQuery.Trim())}");
+            _searchQuery = "";
+        }
+    }
+}
