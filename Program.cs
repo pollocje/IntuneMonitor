@@ -37,6 +37,7 @@ builder.Services.AddHttpClient<SlackNotificationService>();
 builder.Services.AddTransient<EmailNotificationService>();
 builder.Services.AddTransient<INotificationService, NotificationService>();
 builder.Services.AddHostedService<EnrollmentMonitorWorker>();
+builder.Services.AddHostedService<TrialReminderWorker>();
 
 var app = builder.Build();
 

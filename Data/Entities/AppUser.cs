@@ -14,6 +14,9 @@ public class AppUser
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? LastLoginAt { get; set; }
 
+    public string? PasswordResetToken { get; set; }
+    public DateTime? PasswordResetExpiry { get; set; }
+
     // Navigation
     public Tenant Tenant { get; set; } = null!;
 }

@@ -31,7 +31,9 @@ IntuneMonitor fixes that. It watches your Intune enrollments in real time, notif
 
 **Account & Billing**
 - Sign up, login, 14-day free trial — no credit card required
+- Forgot password flow — reset link sent via email, 1-hour expiry
 - $10/month Stripe subscription with full checkout and billing lifecycle
+- Trial expiry reminder — email sent automatically 3 days before trial ends
 - Guided onboarding flow after signup — connect tenant, set up notifications, progress bar
 
 ---
@@ -74,9 +76,11 @@ Open `http://localhost:5000`. Mock mode runs automatically when no real tenant i
 ```bash
 dotnet tool install --global dotnet-ef
 dotnet ef migrations add InitialCreate
-dotnet ef migrations add AddSlackWebhookUrl
+dotnet ef migrations add AddNewFields
 dotnet ef database update
 ```
+
+> `AddNewFields` picks up all schema additions: Slack webhook, trial reminder tracking, and password reset token fields. If `InitialCreate` was already run, just run `AddNewFields`.
 
 `appsettings.json` connection string:
 ```json
@@ -190,9 +194,11 @@ IntuneMonitor/
 │   ├── Admin/
 │   │   └── Index.razor        # SaaS admin — all tenants, MRR, status (/admin)
 │   ├── Account/
-│   │   ├── Login.cshtml       # Sign in (/account/login)
-│   │   ├── Signup.cshtml      # Create account (/account/signup)
-│   │   └── Logout.cshtml.cs   # Sign out
+│   │   ├── Login.cshtml           # Sign in (/account/login)
+│   │   ├── Signup.cshtml          # Create account (/account/signup)
+│   │   ├── Logout.cshtml.cs       # Sign out
+│   │   ├── ForgotPassword.cshtml  # Request reset link (/account/forgot-password)
+│   │   └── ResetPassword.cshtml   # Set new password (/account/reset-password?token=...)
 │   └── Billing/
 │       ├── Checkout.cshtml.cs # Redirects to Stripe (/billing/checkout)
 │       └── Success.cshtml     # Post-payment confirmation (/billing/success)
@@ -216,7 +222,8 @@ IntuneMonitor/
 │   ├── RedirectToLogin.razor
 │   └── EmptyLayout.razor
 ├── Workers/
-│   └── EnrollmentMonitorWorker.cs  # Multi-tenant polling, mock fallback
+│   ├── EnrollmentMonitorWorker.cs  # Multi-tenant polling, mock fallback
+│   └── TrialReminderWorker.cs      # Hourly — sends trial expiry warning 3 days before end
 └── App.razor
 ```
 
@@ -244,6 +251,8 @@ IntuneMonitor/
 - [x] Admin dashboard — tenant list, MRR, trial countdowns
 - [x] Guided onboarding flow after signup
 - [x] Privacy policy + Terms of Service
+- [x] Password reset flow — forgot password, email link, 1-hour expiry
+- [x] Trial expiry warning email — automated 3-day reminder
 - [ ] Azure deployment
 - [ ] Microsoft Publisher Verification (removes "unverified app" warning)
 - [ ] DeviceDetail Force Sync / Restart IME for real tenants (currently uses MockGraphService)

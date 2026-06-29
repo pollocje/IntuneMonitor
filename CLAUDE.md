@@ -33,21 +33,23 @@ Development happens on two machines: **work computer** (primary, at the co-op) a
 - `MockGraphService` (Singleton) — animates apps installing one at a time. Includes `device-004` (LAPTOP-STUCK99) with two failed apps to demo the stuck/warning UI.
 - `GraphService` — real Graph API: takes `GraphServiceClient` in constructor (injected by factory). `syncDevice` POST, `initiateOnDemandProactiveRemediation` POST.
 - `GraphServiceFactory` (Singleton) — creates per-tenant `GraphService` instances using our `ClientId`/`ClientSecret` scoped to the customer's `MicrosoftTenantId`. `IsConfigured` returns false if no credentials in config (triggers mock fallback in worker).
-- `AuthService` — BCrypt hashing, creates Tenant + AppUser on signup, 14-day trial
+- `AuthService` — BCrypt hashing, creates Tenant + AppUser on signup, 14-day trial. `GeneratePasswordResetTokenAsync(email)` — generates a 1-hour token and saves to DB. `ResetPasswordAsync(token, newPassword)` — validates token expiry, updates hash, clears token.
+- `EmailNotificationService` — SendGrid. `SendDeviceReadyAsync` (to `tenant.NotificationEmail`), `SendTrialEndingAsync(recipientEmail, daysLeft)` (to admin user's email), `SendPasswordResetAsync(recipientEmail, resetUrl)`. All skip if no SendGrid API key configured.
 - `StripeService` — Stripe Checkout sessions, handles all webhook events, updates `Tenant.SubscriptionStatus`
 - `INotificationService` — `Task SendDeviceReadyAsync(DeviceEnrollment device, Tenant? tenant = null)`. Tenant is null in mock mode.
 - `NotificationService` (composite, implements `INotificationService`) — calls Teams, Slack, and Email in sequence. Registered as `INotificationService`.
 - `TeamsNotificationService` — Adaptive Card POST to `tenant.TeamsWebhookUrl`. Skips if null.
 - `SlackNotificationService` — Block Kit message POST to `tenant.SlackWebhookUrl`. Skips if null. Includes header, 4-field grid (user, apps, enrolled, time to ready), primary "View Device →" button.
-- `EmailNotificationService` — SendGrid. Sends to `tenant.NotificationEmail`. HTML email with device info table and dashboard link. Skips if no API key or no recipient.
+- `EmailNotificationService` — SendGrid. `SendDeviceReadyAsync` sends to `tenant.NotificationEmail`. `SendTrialEndingAsync` and `SendPasswordResetAsync` added below. Skips if no API key.
 - `TenantOnboardingService` — called after admin consent. Creates `DeviceHealthScript` (Proactive Remediation: detection checks if IME running, remediation restarts it) in customer's tenant. Sets `Tenant.RemediationScriptId`. Requires Intune Plan 2 / M365 E3+; failure is non-fatal.
 
 ### Workers
+- `TrialReminderWorker` — runs hourly. Queries for tenants in Trial status where `TrialEndsAt <= now + 3 days`, `TrialEndsAt > now`, and `TrialReminderSentAt == null`. For each, finds the admin AppUser, calls `EmailNotificationService.SendTrialEndingAsync`, then sets `TrialReminderSentAt`. One email per tenant, ever. Uses `IServiceScopeFactory` to resolve scoped DbContext and transient EmailNotificationService.
 - `EnrollmentMonitorWorker` — polls every 10s. Queries DB for tenants with `MicrosoftTenantId` set. If none found OR `GraphServiceFactory.IsConfigured == false`: uses `MockGraphService`, pushes to `Clients.All` (mock mode). Otherwise: creates a `GraphService` per tenant via `GraphServiceFactory`, polls real data, pushes to `Clients.Group("tenant-{tenantId}")`, fires notifications with tenant context, saves `EnrollmentRecord` to DB. Per-tenant `HashSet<string>` tracks notified devices; DB checked to avoid duplicates across restarts.
 
 ### Data
-- `Tenant` — Id, Name, MicrosoftTenantId, CreatedAt, SubscriptionStatus (Trial/Active/PastDue/Cancelled), TrialEndsAt, StripeCustomerId, StripeSubscriptionId, TeamsWebhookUrl, **SlackWebhookUrl**, NotificationEmail, RemediationScriptId
-- `AppUser` — Id, TenantId FK, Email, PasswordHash, Role (Admin/Viewer), CreatedAt, LastLoginAt
+- `Tenant` — Id, Name, MicrosoftTenantId, CreatedAt, SubscriptionStatus (Trial/Active/PastDue/Cancelled), TrialEndsAt, **TrialReminderSentAt**, StripeCustomerId, StripeSubscriptionId, TeamsWebhookUrl, SlackWebhookUrl, NotificationEmail, RemediationScriptId
+- `AppUser` — Id, TenantId FK, Email, PasswordHash, Role (Admin/Viewer), CreatedAt, LastLoginAt, PasswordResetToken (string?), PasswordResetExpiry (DateTime?)
 - `EnrollmentRecord` — Id, TenantId FK, DeviceId, DeviceName, UserPrincipalName, EnrolledAt, ReadyAt, NotificationSentAt, TotalApps, InstalledApps, AppStatusesJson. Computed: IsComplete, TimeToReady.
 
 ### Pages
@@ -62,7 +64,9 @@ Development happens on two machines: **work computer** (primary, at the co-op) a
 - `DeviceDetail.razor` — `/device/{id}`, `[Authorize]`. Stuck badge + warning banner when apps failed. Force Sync button (always shown). Restart IME button (shown only if `Tenant.RemediationScriptId` set, else "Not Configured" with settings link). Buttons disable during action, show confirmation/error.
 - `Settings.razor` — `/settings`, `[Authorize]`. Account info, subscription status, Teams webhook, Slack webhook, notification email (each with own Save button + 3s confirmation), Microsoft tenant connect status.
 - `Admin/Index.razor` — `/admin`, `[Authorize]`. Access controlled by `Admin:Emails` list in `appsettings.json` (not DB role). Shows: 4 stat cards (total, active, trial, MRR at $10×active). Table: email, status pill, MS connected, notification channels (Teams/Slack/Email badges), trial days left (red at ≤3), join date.
-- `Account/Login.cshtml`, `Signup.cshtml`, `Logout.cshtml.cs` — Razor Pages for cookie auth. Logout supports GET + POST.
+- `Account/Login.cshtml`, `Signup.cshtml`, `Logout.cshtml.cs` — Razor Pages for cookie auth. Logout supports GET + POST. Login has "Forgot password?" link.
+- `Account/ForgotPassword.cshtml` / `.cshtml.cs` — POST email → generate token → send reset email → show "check your inbox" (never reveals if email exists).
+- `Account/ResetPassword.cshtml` / `.cshtml.cs` — GET validates token (1-hour expiry), POST resets password via `AuthService.ResetPasswordAsync`. Shows "Link expired" state if token invalid/expired.
 - `Billing/Checkout.cshtml.cs`, `Success.cshtml` — Stripe Checkout redirect + success page.
 
 ### Shared
@@ -77,7 +81,12 @@ Development happens on two machines: **work computer** (primary, at the co-op) a
 ## What's NOT built yet
 - **Azure deployment** — needs to be hosted somewhere with a real URL
 - **Microsoft Publisher Verification** — without it the admin consent screen shows "unverified app" warning. Requires a verified domain and Microsoft Partner Network account.
-- **Pending DB migration** — `SlackWebhookUrl` column added to `Tenant` entity but migration not yet run. Run `dotnet ef migrations add AddSlackWebhookUrl && dotnet ef database update` before first real run.
+- **Pending DB migration** — several new columns added since `InitialCreate` that haven't been migrated yet. Run a single new migration to pick them all up:
+  ```bash
+  dotnet ef migrations add AddNewFields
+  dotnet ef database update
+  ```
+  Covers: `Tenant.SlackWebhookUrl`, `Tenant.TrialReminderSentAt`, `AppUser.PasswordResetToken`, `AppUser.PasswordResetExpiry`.
 
 ---
 
@@ -128,10 +137,10 @@ Fill in all blank fields:
 ### 4. Run DB migrations
 ```bash
 dotnet ef migrations add InitialCreate
-dotnet ef migrations add AddSlackWebhookUrl
+dotnet ef migrations add AddNewFields
 dotnet ef database update
 ```
-> If you already ran `InitialCreate` previously, just run `AddSlackWebhookUrl`.
+> `AddNewFields` adds: `Tenant.SlackWebhookUrl`, `Tenant.TrialReminderSentAt`, `AppUser.PasswordResetToken`, `AppUser.PasswordResetExpiry`. If `InitialCreate` was already run, just run `AddNewFields`.
 
 ### 5. Set up Azure App Registration
 1. Go to [portal.azure.com](https://portal.azure.com) → Azure Active Directory → App registrations → New registration
@@ -198,6 +207,4 @@ dotnet run
 ## Next priorities
 1. **Azure deployment** — app needs a real URL before you can test OAuth consent or Stripe webhooks end-to-end
 2. **Microsoft Publisher Verification** — removes "unverified app" warning on consent screen
-3. **Trial expiry warning email** — background job that fires 3 days before trial ends nudging users to subscribe
-4. **Password reset** — no recovery flow exists yet; users who forget their password are locked out
-5. **DeviceDetail multi-tenant** — Force Sync / Restart IME in DeviceDetail currently use `IGraphService` (MockGraphService). In real mode these need to create a `GraphService` for the user's tenant via `GraphServiceFactory` instead.
+3. **DeviceDetail multi-tenant** — Force Sync / Restart IME in DeviceDetail currently use `IGraphService` (MockGraphService). In real mode these need to create a `GraphService` for the user's tenant via `GraphServiceFactory` instead.

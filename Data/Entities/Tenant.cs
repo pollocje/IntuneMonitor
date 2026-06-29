@@ -14,6 +14,7 @@ public class Tenant
     public SubscriptionStatus SubscriptionStatus { get; set; } = SubscriptionStatus.Trial;
 
     public DateTime? TrialEndsAt { get; set; }
+    public DateTime? TrialReminderSentAt { get; set; }
 
     public string? StripeCustomerId { get; set; }
     public string? StripeSubscriptionId { get; set; }

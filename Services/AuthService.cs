@@ -47,4 +47,33 @@ public class AuthService
 
         return user;
     }
+
+    public async Task<string?> GeneratePasswordResetTokenAsync(string email)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email.ToLower());
+        if (user is null) return null;
+
+        var token = Guid.NewGuid().ToString("N");
+        user.PasswordResetToken  = token;
+        user.PasswordResetExpiry = DateTime.UtcNow.AddHours(1);
+        await _db.SaveChangesAsync();
+
+        return token;
+    }
+
+    public async Task<bool> ResetPasswordAsync(string token, string newPassword)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u =>
+            u.PasswordResetToken == token &&
+            u.PasswordResetExpiry > DateTime.UtcNow);
+
+        if (user is null) return false;
+
+        user.PasswordHash        = BCrypt.Net.BCrypt.HashPassword(newPassword);
+        user.PasswordResetToken  = null;
+        user.PasswordResetExpiry = null;
+        await _db.SaveChangesAsync();
+
+        return true;
+    }
 }
